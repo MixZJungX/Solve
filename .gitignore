@@ -1,0 +1,8 @@
+# Database and logs
+data/*.db
+data/*.db-journal
+*.log
+
+# Windows temporary files
+Thumbs.db
+Desktop.ini

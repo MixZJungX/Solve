@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lemon shop | Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="container">
+    
+    <!-- Header -->
+    <header class="navbar">
+      <div class="logo-area">
+        <div class="logo-badge lemon-badge">🍋 ADMIN</div>
+        <div>
+          <div class="logo-title">
+            Lemon shop <span class="lemon-text">Admin</span> <span style="font-weight:300;color:var(--text-dim);font-size:16px;">| Control Panel</span>
+          </div>
+          <div class="logo-sub">ระบบจัดการหลังบ้าน, บัญชี และการตั้งค่าคิวงานลูกค้า</div>
+        </div>
+      </div>
+
+      <div class="nav-stats">
+        <div class="balance-card">
+          <div class="pulse-dot" id="adminApiDot" title="สถานะ API ร้านค้า"></div>
+          <div>
+            <div class="balance-label">ยอดเงินร้านค้า</div>
+            <div class="balance-val" id="adminBalance">กำลังโหลด...</div>
+          </div>
+          <button class="btn-icon-refresh" id="btnAdminRefreshBal" title="รีเฟรชยอดเงิน">🔄</button>
+        </div>
+
+        <a href="/" class="btn btn-secondary btn-sm" style="text-decoration:none;" target="_blank">
+          🌐 หน้าลูกค้า
+        </a>
+        <button class="btn btn-danger btn-sm" id="btnAdminLogout">
+          🚪 ออกจากระบบ
+        </button>
+      </div>
+    </header>
+
+    <!-- Admin Content Area (Hidden if not authenticated) -->
+    <div id="adminMainContent">
+
+      <!-- Navigation Tabs -->
+      <nav class="tabs-nav">
+        <button class="tab-btn active" data-tab="tab-settings">
+          <span>⚙️</span>
+          <span>ตั้งค่าระบบ & โหมดคิวงาน</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-accounts">
+          <span>👥</span>
+          <span>จัดการฐานข้อมูลบัญชี</span>
+          <span class="tab-badge" id="adminAccCount">0</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-history">
+          <span>📜</span>
+          <span>ประวัติงานที่ลูกค้าส่ง</span>
+        </button>
+      </nav>
+
+      <!-- ==================== TAB 1: SETTINGS & QUEUE MODE ==================== -->
+      <div id="tab-settings" class="tab-pane active">
+        <div class="card" style="max-width:720px;">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">⚡</span>
+              <span>ตั้งค่าโหมดการส่งงานให้ลูกค้า (Queue Mode)</span>
+            </div>
+          </div>
+
+          <form id="formAdminSettings">
+            <div class="form-group">
+              <label class="form-label">เลือกโหมดคิวสำหรับงานที่ลูกค้าส่ง:</label>
+              <div class="form-desc">
+                เมื่อลูกค้ากดส่งงานจากหน้าเว็บ ระบบจะส่งไปยัง Highspec API ตามโหมดที่คุณเลือกที่นี่โดยอัตโนมัติ:
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:10px;">
+                <label class="selection-card" id="cardQueueNormal">
+                  <input type="radio" name="queueMode" value="normal" checked style="accent-color:var(--lemon);" />
+                  <div>
+                    <div style="font-weight:700;font-size:14px;color:#fff;">⏳ คิวปกติ (Normal Queue)</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                      ส่งงานเข้าคิวปกติ คิดค่าบริการตามปกติ
+                    </div>
+                  </div>
+                </label>
+
+                <label class="selection-card" id="cardQueuePriority">
+                  <input type="radio" name="queueMode" value="priority" style="accent-color:var(--lemon);" />
+                  <div>
+                    <div style="font-weight:700;font-size:14px;color:var(--lemon);">⚡ เร่งด่วน x2 (Priority Queue)</div>
+                    <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                      ลัดคิวทำงานทันทีก่อนคิวอื่น (คิดค่าบริการ 2 เท่า)
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--panel-border);margin:24px 0;" />
+
+            <div class="form-group">
+              <label class="form-label" for="settingApiKey">HIGHSPEC API Key ของทางร้าน:</label>
+              <div class="form-desc">API Key ที่ใช้สำหรับตัดเงินและยิงงาน (ขึ้นต้นด้วย <code>hsk_</code>)</div>
+              <input type="password" id="settingApiKey" placeholder="hsk_xxxxxxxxxxxxxxxxxxxxxx" />
+              <div id="adminMaskedKey" style="font-size:12px;color:var(--text-muted);margin-top:6px;"></div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="settingAdminPass">เปลี่ยนรหัสผ่านแอดมิน (ถ้าต้องการ):</label>
+              <div class="form-desc">รหัสผ่านสำหรับเข้าหน้านี้ (ค่าเริ่มต้น: <code>admin1234</code>)</div>
+              <input type="password" id="settingAdminPass" placeholder="ใส่รหัสผ่านใหม่ หรือเว้นว่างไว้หากไม่เปลี่ยน" />
+            </div>
+
+            <div style="display:flex;gap:12px;margin-top:24px;">
+              <button type="submit" class="btn btn-primary">💾 บันทึกการตั้งค่าทั้งหมด</button>
+              <button type="button" class="btn btn-secondary" id="btnTestApiKey">🔌 ทดสอบเชื่อมต่อ API</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- ==================== TAB 2: ACCOUNTS MANAGEMENT ==================== -->
+      <div id="tab-accounts" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">
+                <span class="card-title-icon">👥</span>
+                <span>จัดการฐานข้อมูลบัญชี (Accounts Database)</span>
+              </div>
+              <div class="form-desc" style="margin-bottom:0;">
+                บันทึกบัญชีของลูกค้าพร้อม Cookie เพื่อให้หน้าบ้านดึงไปแก้แคปช่าได้ทันที
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-primary btn-sm" id="btnAdminBulkImport">
+                <span>📥</span>
+                <span>นำเข้าแบบ Combo (Bulk Import)</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btnAdminAddSingle">
+                <span>+</span>
+                <span>เพิ่มทีละบัญชี</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Search Bar -->
+          <div style="display:flex;gap:10px;margin-bottom:18px;">
+            <input type="text" id="adminSearchAcc" placeholder="🔍 ค้นหาตามชื่อ Username หรือ Note..." style="max-width:360px;" />
+            <button class="btn btn-secondary btn-sm" id="btnAdminReloadAccs">รีเฟรช</button>
+          </div>
+
+          <!-- Accounts Table -->
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;">#</th>
+                  <th>Username</th>
+                  <th>รหัสผ่าน</th>
+                  <th>Cookie Preview</th>
+                  <th>ใช้งานล่าสุด</th>
+                  <th>สถานะล่าสุด</th>
+                  <th style="text-align:right;">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="adminAccTableBody">
+                <tr>
+                  <td colspan="7" style="text-align:center;color:var(--text-muted);padding:36px;">
+                    กำลังโหลดข้อมูลบัญชี...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TAB 3: JOB HISTORY ==================== -->
+      <div id="tab-history" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">📜</span>
+              <span>ประวัติงานที่ลูกค้าส่งทั้งหมด</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btnAdminReloadHistory">รีเฟรช</button>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Job ID</th>
+                  <th>สถานะ</th>
+                  <th>โหมดคิว</th>
+                  <th>จำนวนไอดี</th>
+                  <th>ค่าบริการ (บาท)</th>
+                  <th>สำเร็จ / ตก</th>
+                  <th>คืนเงิน</th>
+                  <th>เวลาที่ส่ง</th>
+                  <th style="text-align:right;">รายละเอียด</th>
+                </tr>
+              </thead>
+              <tbody id="adminHistoryTableBody">
+                <tr>
+                  <td colspan="9" style="text-align:center;color:var(--text-muted);padding:36px;">
+                    กำลังโหลดประวัติงาน...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Login Modal / Card (Shown when not logged in) -->
+    <div class="modal-overlay active" id="modalAdminLogin" style="display:none;">
+      <div class="modal-content" style="max-width:420px;text-align:center;">
+        <div style="font-size:42px;margin-bottom:12px;">🔒</div>
+        <h2 style="font-size:20px;margin-bottom:6px;">เข้าสู่ระบบหลังบ้านแอดมิน</h2>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:20px;">
+          Lemon shop Control Panel (รหัสเริ่มต้น: <code>admin1234</code>)
+        </p>
+
+        <form id="formAdminLogin">
+          <div class="form-group" style="text-align:left;">
+            <label class="form-label" for="loginPass">รหัสผ่านแอดมิน:</label>
+            <input type="password" id="loginPass" required placeholder="ใส่รหัสผ่านแอดมิน" autofocus />
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%;padding:12px;font-size:15px;margin-top:10px;">
+            🔓 เข้าสู่ระบบ
+          </button>
+        </form>
+        <div style="margin-top:16px;">
+          <a href="/" style="font-size:12px;color:var(--text-muted);text-decoration:none;">⬅️ กลับไปหน้าลูกค้า</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer"></div>
+
+  <!-- Bulk Import Modal -->
+  <div class="modal-overlay" id="modalBulkImport">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:17px;font-weight:700;">📥 นำเข้าบัญชีแบบ Combo (Bulk Import)</h3>
+        <button class="modal-close" onclick="closeModal('modalBulkImport')">&times;</button>
+      </div>
+      <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;">
+        คัดลอกข้อมูลบัญชีจากไฟล์ (เช่น <code>5 id.txt</code>) มาวางลงในช่องนี้ รองรับรูปแบบ:
+        <br/><code style="color:var(--lemon);">Username:Password:Cookie</code> หรือ <code style="color:var(--lemon);">Username:Cookie</code>
+      </p>
+      <textarea id="bulkImportText" rows="10" placeholder="Crullshoup5524:Pass123:_|WARNING:-DO-NOT-SHARE-THIS...&#10;Malitatlas756:Pass456:_|WARNING:-DO-NOT-SHARE-THIS..."></textarea>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+        <button class="btn btn-secondary" onclick="closeModal('modalBulkImport')">ยกเลิก</button>
+        <button class="btn btn-success" id="btnSubmitBulkImport">💾 บันทึกนำเข้า</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Single Add Modal -->
+  <div class="modal-overlay" id="modalAddAccount">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 style="font-size:17px;font-weight:700;">+ เพิ่มบัญชีใหม่</h3>
+        <button class="modal-close" onclick="closeModal('modalAddAccount')">&times;</button>
+      </div>
+      <form id="formAddAccount">
+        <div class="form-group">
+          <label class="form-label" for="addAccUsername">Username (ชื่อ Roblox):</label>
+          <input type="text" id="addAccUsername" required placeholder="Roblox username" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="addAccPassword">Password (ถ้ามี):</label>
+          <input type="password" id="addAccPassword" placeholder="ไม่ระบุก็ได้" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="addAccCookie">.ROBLOSECURITY Cookie:</label>
+          <textarea id="addAccCookie" rows="4" required placeholder="_|WARNING:-DO-NOT-SHARE-THIS..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="addAccNote">Note (ป้ายกำกับ):</label>
+          <input type="text" id="addAccNote" placeholder="เช่น บัญชีลูกค้า A" />
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modalAddAccount')">ยกเลิก</button>
+          <button type="submit" class="btn btn-success">💾 บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Job Detail Modal -->
+  <div class="modal-overlay" id="modalJobDetail">
+    <div class="modal-content" style="max-width:680px;">
+      <div class="modal-header">
+        <h3 style="font-size:17px;font-weight:700;" id="modalJobDetailTitle">รายละเอียดงาน</h3>
+        <button class="modal-close" onclick="closeModal('modalJobDetail')">&times;</button>
+      </div>
+      <div id="modalJobDetailContent" style="font-size:13px;"></div>
+      <div style="display:flex;justify-content:flex-end;margin-top:16px;">
+        <button class="btn btn-secondary" onclick="closeModal('modalJobDetail')">ปิด</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
