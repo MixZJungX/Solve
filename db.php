@@ -123,7 +123,11 @@ class DB {
         return $stmt->execute([$username, $password, $cookie, $note]);
     }
 
-    public static function listAccounts(string $search = '', int $limit = 500): array {
+    public static function getAccountsCount(): int {
+        return (int)self::get()->query("SELECT COUNT(*) FROM accounts")->fetchColumn();
+    }
+
+    public static function listAccounts(string $search = '', int $limit = 20000): array {
         if (!empty($search)) {
             $stmt = self::get()->prepare("
                 SELECT id, username, password, status, note, last_job_id, last_status, last_used_at, created_at,

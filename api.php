@@ -382,8 +382,13 @@ try {
         case 'get_accounts':
             requireAdmin();
             $search = $_GET['q'] ?? '';
-            $accounts = DB::listAccounts($search);
-            jsonResponse(['success' => true, 'data' => $accounts]);
+            $accounts = DB::listAccounts($search, 20000);
+            $totalCount = DB::getAccountsCount();
+            jsonResponse([
+                'success' => true,
+                'data' => $accounts,
+                'total_count' => $totalCount
+            ]);
             break;
 
         case 'add_account':
