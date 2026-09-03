@@ -107,8 +107,9 @@
             <span style="font-size:11px;color:var(--lemon);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">
               สถานะการแก้แคปช่า
             </span>
-            <div style="font-size:13px;color:var(--text-muted);margin-top:2px;">
-              Job ID: <span class="mono" id="custJobId" style="color:#fff;"></span>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <span>Job ID: <span class="mono" id="custJobId" style="color:#fff;"></span></span>
+              <span id="custQueueModeBadge" style="font-size:11px;background:var(--panel-2);padding:2px 8px;border-radius:4px;border:1px solid var(--panel-border);color:var(--lemon);font-weight:600;">⏳ คิวปกติ</span>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:10px;">
@@ -117,10 +118,14 @@
           </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center;margin-bottom:16px;">
+        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;text-align:center;margin-bottom:16px;">
           <div class="stat-box">
             <div class="stat-val" id="custTotal">0</div>
             <div class="stat-lbl">จำนวนไอดี</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-val" id="custQueue" style="color:var(--lemon);font-size:18px;">-</div>
+            <div class="stat-lbl">ลำดับคิว (Queue)</div>
           </div>
           <div class="stat-box">
             <div class="stat-val" id="custSuccess" style="color:var(--green);">0</div>

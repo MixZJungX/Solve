@@ -85,6 +85,14 @@ function startLiveTracking(jobId, initialData = null) {
 
   if (initialData) {
     document.getElementById('custTotal').textContent = initialData.total_accounts || 0;
+    const modeBadge = document.getElementById('custQueueModeBadge');
+    if (modeBadge) {
+      modeBadge.textContent = initialData.queue_mode === 'priority' ? '⚡ เร่งด่วน x2' : '⏳ คิวปกติ';
+    }
+    const qEl = document.getElementById('custQueue');
+    if (qEl) {
+      qEl.textContent = initialData.queue_position > 0 ? `คิวที่ ${initialData.queue_position}` : 'รอเริ่มคิว';
+    }
     setJobBadge(initialData.status || 'PENDING');
   }
 
@@ -104,6 +112,34 @@ async function pollJobStatus() {
       setJobBadge(job.status);
 
       document.getElementById('custTotal').textContent = job.total_accounts || 0;
+
+      // Queue Position rendering
+      const qEl = document.getElementById('custQueue');
+      if (qEl) {
+        if (job.status === 'PENDING') {
+          const pos = job.queue_position ?? 0;
+          qEl.textContent = pos > 0 ? `คิวที่ ${pos}` : 'รอเริ่มคิว';
+          qEl.style.color = 'var(--lemon)';
+        } else if (job.status === 'PROCESSING') {
+          qEl.textContent = '⚡ กำลังแก้';
+          qEl.style.color = 'var(--lemon)';
+        } else if (job.status === 'COMPLETED') {
+          qEl.textContent = '✅ เสร็จสิ้น';
+          qEl.style.color = 'var(--green)';
+        } else if (job.status === 'FAILED') {
+          qEl.textContent = '❌ ยกเลิก';
+          qEl.style.color = 'var(--red)';
+        } else {
+          qEl.textContent = '-';
+        }
+      }
+
+      const modeBadge = document.getElementById('custQueueModeBadge');
+      if (modeBadge && (job.queue_mode || job.priority !== undefined)) {
+        const isX2 = job.queue_mode === 'priority' || job.priority === true;
+        modeBadge.textContent = isX2 ? '⚡ เร่งด่วน x2' : '⏳ คิวปกติ';
+      }
+
       document.getElementById('custSuccess').textContent = job.success_count ?? 0;
       document.getElementById('custFail').textContent = job.fail_count ?? 0;
 

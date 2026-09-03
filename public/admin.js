@@ -433,14 +433,24 @@ async function viewJobDetail(id) {
       const sCount = job.success_count ?? (job.status === 'COMPLETED' ? (job.accounts?.length || 1) : 0);
       const fCount = job.fail_count ?? 0;
 
+      let queueText = '-';
+      if (job.status === 'PENDING') {
+        queueText = job.queue_position > 0 ? `ลำดับคิวที่ ${job.queue_position}` : 'กำลังรอเริ่มคิว';
+      } else if (job.status === 'PROCESSING') {
+        queueText = '⚡ กำลังดำเนินการแก้';
+      } else if (job.status === 'COMPLETED') {
+        queueText = '✅ ประมวลผลเสร็จแล้ว';
+      }
+
       document.getElementById('modalJobDetailContent').innerHTML = `
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
           <div><b>สถานะ:</b> ${renderStatusTag(job.status)}</div>
-          <div><b>โหมด:</b> ${job.priority ? '⚡ เร่งด่วน x2' : 'คิวปกติ'}</div>
+          <div><b>โหมดคิว:</b> ${job.priority ? '⚡ เร่งด่วน x2' : '⏳ คิวปกติ'}</div>
+          <div><b>ลำดับคิว:</b> <span style="color:var(--lemon);font-weight:600;">${queueText}</span></div>
           <div><b>ตัดเงินไป:</b> ${job.total_thb} ฿</div>
-          <div><b>คืนเงิน:</b> ${job.refunded_thb} ฿</div>
           <div><b>สำเร็จ:</b> <span style="color:var(--green);font-weight:700;">${sCount} ไอดี</span></div>
           <div><b>ตก/ล้มเหลว:</b> <span style="color:var(--red);font-weight:700;">${fCount} ไอดี</span></div>
+          <div><b>คืนเงิน:</b> ${job.refunded_thb} ฿</div>
         </div>
         ${accountsHtml}
       `;

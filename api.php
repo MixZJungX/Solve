@@ -274,6 +274,9 @@ try {
                     'data' => [
                         'id' => $id,
                         'status' => $info['status'] ?? 'PENDING',
+                        'queue_position' => $info['queue_position'] ?? 0,
+                        'priority' => !empty($info['priority']),
+                        'queue_mode' => !empty($info['priority']) ? 'priority' : 'normal',
                         'total_accounts' => $localJob['total_accounts'] ?? count($localJob['accounts'] ?? []),
                         'success_count' => $successCount,
                         'fail_count' => $failCount,
@@ -602,6 +605,7 @@ try {
                     'data' => [
                         'id' => $id,
                         'status' => $info['status'] ?? 'UNKNOWN',
+                        'queue_position' => $info['queue_position'] ?? 0,
                         'service' => 'captcha',
                         'total_amount' => $info['total_amount'] ?? 0,
                         'total_thb' => number_format(($info['total_amount'] ?? 0) / 100, 2),
