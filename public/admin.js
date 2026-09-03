@@ -21,9 +21,14 @@ function showToast(message, type = 'info') {
 }
 
 async function apiCall(endpoint, method = 'GET', body = null) {
+  const token = localStorage.getItem('lemon_admin_token');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) {
+    headers['X-Admin-Token'] = token;
+  }
   const options = {
     method,
-    headers: { 'Content-Type': 'application/json' }
+    headers
   };
   if (body) {
     options.body = JSON.stringify(body);
@@ -86,10 +91,12 @@ async function checkAuth() {
 // Logout
 document.getElementById('btnAdminLogout')?.addEventListener('click', async () => {
   await apiCall('/api.php?action=admin_logout', 'POST');
+  localStorage.removeItem('lemon_admin_token');
+  document.cookie = "lemon_admin_auth=; path=/; max-age=0";
   showToast('ออกจากระบบเรียบร้อย', 'info');
   setTimeout(() => {
     window.location.href = '/login';
-  }, 400);
+  }, 300);
 });
 
 // Balance

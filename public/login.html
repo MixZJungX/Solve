@@ -138,10 +138,14 @@
         const data = await res.json();
 
         if (res.ok && data.success) {
+          if (data.token) {
+            localStorage.setItem('lemon_admin_token', data.token);
+          }
+          document.cookie = "lemon_admin_auth=1; path=/; max-age=" + (86400 * 30) + "; SameSite=Lax";
           showToast('ยืนยันตัวตนสำเร็จ! กำลังเข้าสู่ระบบหลังบ้าน...', 'success');
           setTimeout(() => {
             window.location.href = '/admin';
-          }, 600);
+          }, 500);
         } else {
           btn.disabled = false;
           btn.innerHTML = '<span>🔓</span><span>เข้าสู่ระบบหลังบ้าน (Enter Admin)</span>';

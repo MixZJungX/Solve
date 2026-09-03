@@ -3,6 +3,13 @@
 ini_set('display_errors', '0');
 error_reporting(E_ALL);
 
+session_set_cookie_params([
+    'lifetime' => 86400 * 30, // 30 days
+    'path' => '/',
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,7 +17,7 @@ if (session_status() === PHP_SESSION_NONE) {
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key');
+header('Access-Control-Allow-Headers: Content-Type, Authorization, X-API-Key, X-Admin-Token');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -28,7 +35,21 @@ function jsonResponse(array $data, int $code = 200): void {
 }
 
 function isAdmin(): bool {
-    return !empty($_SESSION['is_admin']);
+    if (!empty($_SESSION['is_admin'])) {
+        return true;
+    }
+    $headerToken = $_SERVER['HTTP_X_ADMIN_TOKEN'] ?? '';
+    $actualPass = DB::getSetting('admin_password', 'admin1234');
+    $expectedToken = hash('sha256', $actualPass . '_lemon_salt_2026');
+    if (!empty($headerToken) && hash_equals($expectedToken, $headerToken)) {
+        $_SESSION['is_admin'] = true;
+        return true;
+    }
+    if (!empty($_COOKIE['lemon_admin_auth'])) {
+        $_SESSION['is_admin'] = true;
+        return true;
+    }
+    return false;
 }
 
 function requireAdmin(): void {
@@ -298,7 +319,13 @@ try {
 
             if ($password === $adminPassword) {
                 $_SESSION['is_admin'] = true;
-                jsonResponse(['success' => true, 'message' => 'เข้าสู่ระบบสำเร็จ']);
+                setcookie('lemon_admin_auth', '1', time() + (86400 * 30), '/', '', false, false);
+                $token = hash('sha256', $adminPassword . '_lemon_salt_2026');
+                jsonResponse([
+                    'success' => true,
+                    'message' => 'เข้าสู่ระบบสำเร็จ',
+                    'token' => $token
+                ]);
             } else {
                 jsonResponse(['success' => false, 'error' => 'รหัสผ่านแอดมินไม่ถูกต้อง'], 401);
             }
@@ -306,6 +333,8 @@ try {
 
         case 'admin_logout':
             $_SESSION['is_admin'] = false;
+            unset($_SESSION['is_admin']);
+            setcookie('lemon_admin_auth', '', time() - 3600, '/');
             session_destroy();
             jsonResponse(['success' => true, 'message' => 'ออกจากระบบเรียบร้อย']);
             break;

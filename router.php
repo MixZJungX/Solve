@@ -1,5 +1,12 @@
 <?php
 // router.php — Development router for PHP built-in server
+session_set_cookie_params([
+    'lifetime' => 86400 * 30, // 30 days
+    'path' => '/',
+    'httponly' => true,
+    'samesite' => 'Lax'
+]);
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -16,7 +23,10 @@ $publicDir = __DIR__ . '/public';
 
 // Admin route (Protected: MUST be authenticated, otherwise redirect to /login)
 if ($uri === '/admin' || $uri === '/admin/' || $uri === '/admin.html') {
-    if (empty($_SESSION['is_admin'])) {
+    $hasSession = !empty($_SESSION['is_admin']);
+    $hasCookie = !empty($_COOKIE['lemon_admin_auth']);
+
+    if (!$hasSession && !$hasCookie) {
         header('Location: /login');
         exit;
     }
@@ -27,7 +37,7 @@ if ($uri === '/admin' || $uri === '/admin/' || $uri === '/admin.html') {
 
 // Login Gate route (Entry gate before admin)
 if ($uri === '/login' || $uri === '/login/' || $uri === '/login.html') {
-    if (!empty($_SESSION['is_admin'])) {
+    if (!empty($_SESSION['is_admin']) || !empty($_COOKIE['lemon_admin_auth'])) {
         header('Location: /admin');
         exit;
     }
