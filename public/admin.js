@@ -256,6 +256,32 @@ async function deleteAdminAccount(id, username) {
   }
 }
 
+// Clear All Accounts
+document.getElementById('btnAdminClearAll')?.addEventListener('click', async () => {
+  const count = adminAccounts.length || 0;
+  if (count === 0) {
+    return showToast('ไม่มีบัญชีในระบบให้ลบ', 'info');
+  }
+
+  const confirmed = confirm(`⚠️ คำเตือนความปลอดภัย:\nคุณต้องการล้างบัญชีทั้งหมดจำนวน ${count} บัญชี ออกจากระบบใช่หรือไม่?\n\n(การกระทำนี้จะลบข้อมูลบัญชีและคุกกี้ทั้งหมด และไม่สามารถกู้คืนได้)`);
+  if (!confirmed) return;
+
+  const btn = document.getElementById('btnAdminClearAll');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span> กำลังล้าง...';
+
+  const { ok, data } = await apiCall('/api.php?action=clear_all_accounts', 'POST');
+  btn.disabled = false;
+  btn.innerHTML = '<span>🗑️</span> <span>ล้างบัญชีทั้งหมด</span>';
+
+  if (ok && data.success) {
+    showToast(data.message, 'success');
+    loadAdminAccounts();
+  } else {
+    showToast(data.error || 'เกิดข้อผิดพลาดในการล้างบัญชี', 'error');
+  }
+});
+
 // Bulk Import
 document.getElementById('btnAdminBulkImport')?.addEventListener('click', () => {
   openModal('modalBulkImport');
@@ -300,12 +326,12 @@ document.getElementById('formAddAccount')?.addEventListener('submit', async (e) 
   });
 
   if (ok && data.success) {
-    showToast('เพิ่มบัญชีเรียบร้อย', 'success');
+    showToast(data.message || 'บันทึกบัญชีเรียบร้อย', 'success');
     document.getElementById('formAddAccount').reset();
     closeModal('modalAddAccount');
     loadAdminAccounts();
   } else {
-    showToast(data.error || 'เพิ่มไม่สำเร็จ', 'error');
+    showToast(data.error || 'เกิดข้อผิดพลาด', 'error');
   }
 });
 

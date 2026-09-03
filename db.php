@@ -127,6 +127,10 @@ class DB {
         return (int)self::get()->query("SELECT COUNT(*) FROM accounts")->fetchColumn();
     }
 
+    public static function clearAllAccounts(): bool {
+        return (bool)self::get()->exec("DELETE FROM accounts");
+    }
+
     public static function listAccounts(string $search = '', int $limit = 20000): array {
         if (!empty($search)) {
             $stmt = self::get()->prepare("

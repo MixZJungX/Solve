@@ -403,8 +403,21 @@ try {
                 jsonResponse(['success' => false, 'error' => 'กรุณากรอก Username และ Cookie'], 400);
             }
 
+            // Check if account already exists
+            $stmt = DB::get()->prepare("SELECT 1 FROM accounts WHERE username = ? COLLATE NOCASE LIMIT 1");
+            $stmt->execute([$username]);
+            $isDuplicate = (bool)$stmt->fetchColumn();
+
             $ok = DB::upsertAccount($username, $cookie, $password, $note);
-            jsonResponse(['success' => $ok, 'message' => $ok ? 'บันทึกบัญชีเรียบร้อย' : 'บันทึกบัญชีไม่สำเร็จ']);
+            $msg = $isDuplicate
+                ? "อัปเดตข้อมูลบัญชีเดิม \"$username\" เรียบร้อย (มีชื่อนี้อยู่ในระบบแล้ว)"
+                : "เพิ่มบัญชีใหม่ \"$username\" เรียบร้อย";
+
+            jsonResponse([
+                'success' => $ok,
+                'is_duplicate' => $isDuplicate,
+                'message' => $ok ? $msg : 'บันทึกบัญชีไม่สำเร็จ'
+            ]);
             break;
 
         case 'import_accounts':
@@ -417,8 +430,19 @@ try {
 
             $lines = preg_split("/\r\n|\n|\r/", $text);
             $imported = 0;
+            $newCount = 0;
+            $duplicateCount = 0;
             $invalid = 0;
             $errors = [];
+
+            // Pre-load all existing usernames from DB
+            $existingUsernames = [];
+            $stmt = DB::get()->query("SELECT LOWER(username) FROM accounts");
+            while ($u = $stmt->fetchColumn()) {
+                $existingUsernames[$u] = true;
+            }
+
+            $seenInBatch = [];
 
             foreach ($lines as $lineIdx => $rawLine) {
                 $line = trim($rawLine);
@@ -451,6 +475,15 @@ try {
                 $cookie = trim($cookie);
 
                 if (!empty($username) && !empty($cookie)) {
+                    $uLower = strtolower($username);
+                    if (isset($existingUsernames[$uLower]) || isset($seenInBatch[$uLower])) {
+                        $duplicateCount++;
+                    } else {
+                        $newCount++;
+                        $existingUsernames[$uLower] = true;
+                    }
+                    $seenInBatch[$uLower] = true;
+
                     DB::upsertAccount($username, $cookie, $password);
                     $imported++;
                 } else {
@@ -461,14 +494,33 @@ try {
                 }
             }
 
+            $summaryText = "นำเข้าเรียบร้อย: เพิ่มใหม่ $newCount บัญชี";
+            if ($duplicateCount > 0) {
+                $summaryText .= " | ซ้ำเดิม (อัปเดต) $duplicateCount บัญชี";
+            }
+            if ($invalid > 0) {
+                $summaryText .= " | ข้าม $invalid บรรทัด";
+            }
+
             jsonResponse([
                 'success' => true,
-                'message' => "นำเข้าบัญชีสำเร็จ $imported บัญชี" . ($invalid > 0 ? " (ไม่ผ่าน $invalid บรรทัด)" : ""),
+                'message' => $summaryText,
                 'data' => [
-                    'imported' => $imported,
+                    'total_processed' => $imported + $invalid,
+                    'new_accounts' => $newCount,
+                    'duplicate_accounts' => $duplicateCount,
                     'invalid' => $invalid,
                     'errors' => $errors
                 ]
+            ]);
+            break;
+
+        case 'clear_all_accounts':
+            requireAdmin();
+            $ok = DB::clearAllAccounts();
+            jsonResponse([
+                'success' => $ok,
+                'message' => $ok ? 'ล้างบัญชีทั้งหมดในระบบเรียบร้อยแล้ว' : 'ไม่สามารถล้างบัญชีได้'
             ]);
             break;
 
