@@ -1,5 +1,4 @@
-# Database and logs
-data/*.db
+# Logs & Temporary journals
 data/*.db-journal
 *.log
 
