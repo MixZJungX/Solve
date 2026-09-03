@@ -1,6 +1,11 @@
 <?php
 // api.php — Highspec Direct API Gateway & Local Management
-session_start();
+ini_set('display_errors', '0');
+error_reporting(E_ALL);
+
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
