@@ -59,6 +59,10 @@ function requireAdmin(): void {
 }
 
 function getApiKey(): ?string {
+    $env = getenv('HIGHSPEC_API_KEY') ?: getenv('API_KEY');
+    if (!empty($env)) {
+        return trim($env);
+    }
     return DB::getSetting('api_key');
 }
 
