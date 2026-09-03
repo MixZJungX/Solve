@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lemon shop | Admin Security Gate</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .login-wrap {
+      max-width: 440px;
+      margin: 80px auto 0;
+    }
+    .login-box {
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--radius);
+      padding: 32px 28px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+    .login-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--lemon), transparent);
+    }
+    .shield-badge {
+      width: 68px;
+      height: 68px;
+      border-radius: 20px;
+      background: rgba(250, 204, 21, 0.1);
+      border: 1px solid rgba(250, 204, 21, 0.3);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      margin-bottom: 16px;
+      box-shadow: 0 0 20px var(--lemon-glow);
+    }
+    .login-title {
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .login-sub {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-top: 4px;
+      margin-bottom: 24px;
+    }
+    .gate-input-wrapper {
+      position: relative;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    .gate-input-wrapper label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-main);
+      display: block;
+      margin-bottom: 6px;
+    }
+    .gate-input {
+      font-family: var(--font-mono);
+      letter-spacing: 0.2em;
+      font-size: 18px !important;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container login-wrap">
+    
+    <div class="login-box">
+      <div class="shield-badge">🛡️</div>
+      <h1 class="login-title">Lemon shop <span>Admin</span></h1>
+      <p class="login-sub">ระบบรักษาความปลอดภัย ยืนยันตัวตนก่อนเข้าสู่หลังบ้าน</p>
+
+      <form id="formGateLogin">
+        <div class="gate-input-wrapper">
+          <label for="adminPasscode">รหัสผ่านแอดมิน (Admin Access Key):</label>
+          <input type="password" id="adminPasscode" class="gate-input" required placeholder="••••••••" autofocus />
+        </div>
+
+        <button type="submit" class="btn btn-primary" id="btnGateSubmit" style="width:100%;padding:14px;font-size:15px;">
+          <span>🔓</span>
+          <span>เข้าสู่ระบบหลังบ้าน (Enter Admin)</span>
+        </button>
+      </form>
+
+      <div style="margin-top:24px;border-top:1px solid var(--panel-border);padding-top:16px;">
+        <a href="/home" style="color:var(--text-muted);text-decoration:none;font-size:13px;display:inline-flex;align-items:center;gap:6px;">
+          <span>⬅️</span>
+          <span>กลับสู่หน้าหลักลูกค้า (Home)</span>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toastContainer"></div>
+
+  <script>
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      const icon = type === 'success' ? '✅' : (type === 'error' ? '❌' : 'ℹ️');
+      toast.innerHTML = `<span>${icon}</span><div>${message}</div>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(40px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    document.getElementById('formGateLogin')?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('adminPasscode').value.trim();
+      const btn = document.getElementById('btnGateSubmit');
+
+      btn.disabled = true;
+      btn.innerHTML = '<span>⏳</span><span>กำลังตรวจสอบสิทธิ์...</span>';
+
+      try {
+        const res = await fetch('/api.php?action=admin_login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          showToast('ยืนยันตัวตนสำเร็จ! กำลังเข้าสู่ระบบหลังบ้าน...', 'success');
+          setTimeout(() => {
+            window.location.href = '/admin';
+          }, 600);
+        } else {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🔓</span><span>เข้าสู่ระบบหลังบ้าน (Enter Admin)</span>';
+          showToast(data.error || 'รหัสผ่านไม่ถูกต้อง', 'error');
+          document.getElementById('adminPasscode').value = '';
+          document.getElementById('adminPasscode').focus();
+        }
+      } catch (err) {
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔓</span><span>เข้าสู่ระบบหลังบ้าน (Enter Admin)</span>';
+        showToast('เกิดข้อผิดพลาดในการเชื่อมต่อ', 'error');
+      }
+    });
+  </script>
+</body>
+</html>

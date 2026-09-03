@@ -72,39 +72,24 @@ async function checkAuth() {
   try {
     const { ok, data } = await apiCall('/api.php?action=admin_check_auth');
     if (ok && data.is_admin) {
-      document.getElementById('modalAdminLogin').style.display = 'none';
-      document.getElementById('adminMainContent').style.display = 'block';
       loadAdminSettings();
       refreshAdminBalance();
       loadAdminAccounts();
     } else {
-      document.getElementById('modalAdminLogin').style.display = 'flex';
-      document.getElementById('adminMainContent').style.display = 'none';
+      window.location.href = '/login';
     }
   } catch (e) {
-    console.error(e);
+    window.location.href = '/login';
   }
 }
-
-// Login
-document.getElementById('formAdminLogin')?.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const password = document.getElementById('loginPass').value;
-
-  const { ok, data } = await apiCall('/api.php?action=admin_login', 'POST', { password });
-  if (ok && data.success) {
-    showToast('เข้าสู่ระบบสำเร็จ', 'success');
-    checkAuth();
-  } else {
-    showToast(data.error || 'รหัสผ่านไม่ถูกต้อง', 'error');
-  }
-});
 
 // Logout
 document.getElementById('btnAdminLogout')?.addEventListener('click', async () => {
   await apiCall('/api.php?action=admin_logout', 'POST');
-  showToast('ออกจากระบบแล้ว', 'info');
-  checkAuth();
+  showToast('ออกจากระบบเรียบร้อย', 'info');
+  setTimeout(() => {
+    window.location.href = '/login';
+  }, 400);
 });
 
 // Balance

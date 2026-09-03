@@ -1,5 +1,8 @@
 <?php
 // router.php — Development router for PHP built-in server
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $uri = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
 
@@ -11,10 +14,25 @@ if (str_starts_with($uri, '/api')) {
 
 $publicDir = __DIR__ . '/public';
 
-// Admin route
+// Admin route (Protected: MUST be authenticated, otherwise redirect to /login)
 if ($uri === '/admin' || $uri === '/admin/' || $uri === '/admin.html') {
+    if (empty($_SESSION['is_admin'])) {
+        header('Location: /login');
+        exit;
+    }
     header('Content-Type: text/html; charset=utf-8');
     readfile($publicDir . '/admin.html');
+    exit;
+}
+
+// Login Gate route (Entry gate before admin)
+if ($uri === '/login' || $uri === '/login/' || $uri === '/login.html') {
+    if (!empty($_SESSION['is_admin'])) {
+        header('Location: /admin');
+        exit;
+    }
+    header('Content-Type: text/html; charset=utf-8');
+    readfile($publicDir . '/login.html');
     exit;
 }
 
@@ -51,7 +69,7 @@ if ($uri !== '/' && file_exists($filePath) && !is_dir($filePath)) {
     exit;
 }
 
-// Customer page by default
+// Fallback to customer home
 if (file_exists($publicDir . '/index.html')) {
     header('Content-Type: text/html; charset=utf-8');
     readfile($publicDir . '/index.html');
