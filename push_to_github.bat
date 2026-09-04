@@ -7,8 +7,9 @@ echo     Pushing Lemon Shop to GitHub (MixZJungX/Solve)
 echo ===================================================
 echo.
 
+"C:\Program Files\Git\bin\git.exe" add data/highspec.db
 "C:\Program Files\Git\bin\git.exe" add .
-"C:\Program Files\Git\bin\git.exe" commit -m "Update Lemon shop Solve Helper"
+"C:\Program Files\Git\bin\git.exe" commit -m "Update Lemon shop Solve Helper with latest database"
 "C:\Program Files\Git\bin\git.exe" branch -M main
 "C:\Program Files\Git\bin\git.exe" remote set-url origin https://github.com/MixZJungX/Solve.git
 
