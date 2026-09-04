@@ -245,4 +245,13 @@ class DB {
         ");
         $stmt->execute([$jobId, $status, $status, trim($username)]);
     }
+
+    public static function updateAccountStatus(string $username, string $status): void {
+        $stmt = self::get()->prepare("
+            UPDATE accounts
+            SET last_status = ?
+            WHERE username = ? COLLATE NOCASE
+        ");
+        $stmt->execute([trim($status), trim($username)]);
+    }
 }

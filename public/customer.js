@@ -280,9 +280,28 @@ async function pollJobStatus() {
         clearInterval(pollTimer);
         pollTimer = null;
         completeFakeProgressBar();
-        document.getElementById('custFinishMsg').style.display = 'block';
-        if (job.status === 'COMPLETED') {
+        const finishEl = document.getElementById('custFinishMsg');
+        finishEl.style.display = 'block';
+
+        const isAllSkipped = job.accounts_detail && job.accounts_detail.length > 0 && job.accounts_detail.every(a => a.status === 'SKIP');
+
+        if (isAllSkipped) {
+          finishEl.style.background = 'rgba(251, 191, 36, 0.12)';
+          finishEl.style.borderColor = 'rgba(251, 191, 36, 0.35)';
+          finishEl.style.color = 'var(--yellow)';
+          finishEl.innerHTML = '⏩ บัญชีนี้ถูกส่งทำงานในคิวก่อนหน้าไปแล้ว ระบบตรวจพบจึงข้ามให้อัตโนมัติเพื่อป้องกันการคิดเงินซ้ำ (ไม่คิดเงิน)';
+          showToast('บัญชีนี้ถูกส่งในคิวก่อนหน้าแล้ว ระบบข้ามให้อัตโนมัติ', 'info');
+        } else if (job.status === 'COMPLETED') {
+          finishEl.style.background = 'rgba(52, 211, 153, 0.1)';
+          finishEl.style.borderColor = 'rgba(52, 211, 153, 0.3)';
+          finishEl.style.color = 'var(--green)';
+          finishEl.innerHTML = '🎉 การแก้แคปช่าเสร็จสิ้นเรียบร้อยแล้ว!';
           showToast('แก้แคปช่าเสร็จสิ้นเรียบร้อยแล้ว!', 'success');
+        } else {
+          finishEl.style.background = 'rgba(248, 113, 113, 0.1)';
+          finishEl.style.borderColor = 'rgba(248, 113, 113, 0.3)';
+          finishEl.style.color = 'var(--red)';
+          finishEl.innerHTML = '❌ การประมวลผลล้มเหลว หรือถูกยกเลิก (ระบบคืนเงินแล้ว)';
         }
       }
     }
@@ -374,8 +393,8 @@ function getAccountStatusInfo(status) {
   if (st === 'SKIP') {
     return {
       cls: 'status-SKIP',
-      text: 'ข้าม (มีในคิวเดิม) ⏩',
-      desc: 'บัญชีนี้กำลังทำงานอยู่ในคิวรอบก่อนหน้าที่ยังไม่เสร็จ'
+      text: 'ข้าม (กดส่งซ้ำ / มีในคิวเดิม) ⏩',
+      desc: 'ไอดีนี้ถูกส่งแก้แคปช่าไปแล้วในรอบก่อนหน้า ระบบตรวจพบจึงข้ามให้อัตโนมัติเพื่อไม่ให้เสียเงินซ้ำซ้อน (ปลอดภัย ไม่คิดเงิน)'
     };
   }
 

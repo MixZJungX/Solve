@@ -254,10 +254,25 @@ try {
                             'username' => $u,
                             'status' => $item['status'] ?? 'PENDING'
                         ];
+
+                        // Update account real status in DB so it doesn't stay PENDING
+                        if (!empty($u) && $u !== 'Unknown') {
+                            DB::updateAccountStatus($u, $st);
+                        }
                     }
                 } elseif (isset($info['success_accounts'])) {
                     $successCount = (int)$info['success_accounts'];
                     $failCount = (int)$info['fail_accounts'];
+                }
+
+                // If job completed and no accountsDetail, mark job accounts completed
+                if (($info['status'] ?? '') === 'COMPLETED' && empty($accountsDetail)) {
+                    $localJobCheck = DB::getJob($id);
+                    if (!empty($localJobCheck['accounts'])) {
+                        foreach ($localJobCheck['accounts'] as $u) {
+                            DB::updateAccountStatus($u, 'COMPLETED');
+                        }
+                    }
                 }
 
                 // Update local DB
@@ -590,6 +605,22 @@ try {
                 $accountsDetail = [];
                 if ($accRes['status'] === 200 && isset($accRes['data']['data']['accounts'])) {
                     $accountsDetail = $accRes['data']['data']['accounts'];
+                    foreach ($accountsDetail as $item) {
+                        $u = explode(':', $item['combo'] ?? '')[0] ?? '';
+                        $st = strtoupper($item['status'] ?? '');
+                        if (!empty($u) && !empty($st)) {
+                            DB::updateAccountStatus($u, $st);
+                        }
+                    }
+                }
+
+                if (($info['status'] ?? '') === 'COMPLETED' && empty($accountsDetail)) {
+                    $localJobCheck = DB::getJob($id);
+                    if (!empty($localJobCheck['accounts'])) {
+                        foreach ($localJobCheck['accounts'] as $u) {
+                            DB::updateAccountStatus($u, 'COMPLETED');
+                        }
+                    }
                 }
 
                 DB::updateJobStatus($id, [
