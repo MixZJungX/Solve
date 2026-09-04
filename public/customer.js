@@ -289,19 +289,30 @@ async function pollJobStatus() {
           finishEl.style.background = 'rgba(251, 191, 36, 0.12)';
           finishEl.style.borderColor = 'rgba(251, 191, 36, 0.35)';
           finishEl.style.color = 'var(--yellow)';
-          finishEl.innerHTML = '⏩ บัญชีนี้ถูกส่งทำงานในคิวก่อนหน้าไปแล้ว ระบบตรวจพบจึงข้ามให้อัตโนมัติเพื่อป้องกันการคิดเงินซ้ำ (ไม่คิดเงิน)';
-          showToast('บัญชีนี้ถูกส่งในคิวก่อนหน้าแล้ว ระบบข้ามให้อัตโนมัติ', 'info');
+          finishEl.innerHTML = `
+            <div style="font-weight:700;margin-bottom:4px;">⏳ ไอดีนี้กำลังถูกแก้อยู่ในคิวก่อนหน้า ณ ขณะนั้น (ระบบป้องกันไม่ให้เสียเงินซ้ำ)</div>
+            <div style="font-size:12px;opacity:0.9;line-height:1.5;">ระบบของ Highspec ตรวจพบว่าเพิ่งมีการส่งไอดีนี้ไปและงานเดิมยังทำอยู่ จึงข้ามคำสั่งที่กดซ้ำให้อัตโนมัติ (ไม่คิดเงิน) — <b>เมื่อคิวเดิมเสร็จแล้ว คุณสามารถกดส่งแก้ใหม่อีกกี่รอบก็ได้ตลอดเวลาครับ!</b></div>
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="margin-top:10px;font-size:12px;cursor:pointer;">🔄 ปิดหน้านี้แล้วส่งใหม่อีกรอบ</button>
+          `;
+          showToast('ไอดีนี้กำลังแก้อยู่ในคิวก่อนหน้า ระบบข้ามคำสั่งที่กดซ้ำให้', 'info');
         } else if (job.status === 'COMPLETED') {
           finishEl.style.background = 'rgba(52, 211, 153, 0.1)';
           finishEl.style.borderColor = 'rgba(52, 211, 153, 0.3)';
           finishEl.style.color = 'var(--green)';
-          finishEl.innerHTML = '🎉 การแก้แคปช่าเสร็จสิ้นเรียบร้อยแล้ว!';
+          finishEl.innerHTML = `
+            <div style="font-weight:700;margin-bottom:4px;">🎉 การแก้แคปช่าเสร็จสิ้นเรียบร้อยแล้ว!</div>
+            <div style="font-size:12px;opacity:0.9;line-height:1.5;">สามารถเข้าเกม Roblox ได้ทันที หากในอนาคตหลุดหรือติดแคปช่าอีก สามารถนำมากดส่งแก้ใหม่ได้ตลอดเวลา</div>
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="margin-top:10px;font-size:12px;cursor:pointer;">✨ ส่งแก้ไอดีอื่น / เริ่มรายการใหม่</button>
+          `;
           showToast('แก้แคปช่าเสร็จสิ้นเรียบร้อยแล้ว!', 'success');
         } else {
           finishEl.style.background = 'rgba(248, 113, 113, 0.1)';
           finishEl.style.borderColor = 'rgba(248, 113, 113, 0.3)';
           finishEl.style.color = 'var(--red)';
-          finishEl.innerHTML = '❌ การประมวลผลล้มเหลว หรือถูกยกเลิก (ระบบคืนเงินแล้ว)';
+          finishEl.innerHTML = `
+            <div style="font-weight:700;margin-bottom:4px;">❌ การประมวลผลล้มเหลว หรือถูกยกเลิก (ระบบคืนเงินแล้ว)</div>
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="margin-top:10px;font-size:12px;cursor:pointer;">🔄 ลองใหม่อีกครั้ง</button>
+          `;
         }
       }
     }
@@ -393,8 +404,8 @@ function getAccountStatusInfo(status) {
   if (st === 'SKIP') {
     return {
       cls: 'status-SKIP',
-      text: 'ข้าม (กดส่งซ้ำ / มีในคิวเดิม) ⏩',
-      desc: 'ไอดีนี้ถูกส่งแก้แคปช่าไปแล้วในรอบก่อนหน้า ระบบตรวจพบจึงข้ามให้อัตโนมัติเพื่อไม่ให้เสียเงินซ้ำซ้อน (ปลอดภัย ไม่คิดเงิน)'
+      text: 'ข้าม (กำลังทำในคิวก่อนหน้า) ⏩',
+      desc: 'ขณะกดส่ง ไอดีนี้กำลังอยู่ในคิวแก้อยู่แล้ว ระบบจึงข้ามคำสั่งที่กดซ้ำให้ (ไม่คิดเงิน) — เมื่อคิวเดิมเสร็จ สามารถส่งแก้ใหม่ได้เรื่อย ๆ ครับ'
     };
   }
 
@@ -412,6 +423,17 @@ function getAccountStatusInfo(status) {
     text: `${status} ❌`,
     desc: 'สถานะไม่ผ่านการทดสอบ'
   };
+}
+
+function resetCustomerJobSection() {
+  activeJobId = null;
+  if (pollTimer) clearInterval(pollTimer);
+  if (progressTimer) clearInterval(progressTimer);
+  const section = document.getElementById('customerJobSection');
+  if (section) section.style.display = 'none';
+  const finishEl = document.getElementById('custFinishMsg');
+  if (finishEl) finishEl.style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 document.getElementById('btnCustRefresh')?.addEventListener('click', () => {
