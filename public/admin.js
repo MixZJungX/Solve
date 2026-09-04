@@ -250,7 +250,7 @@ function renderStatusTag(status) {
   } else if (st === 'PROCESSING') {
     cls = 'status-PROCESSING';
     text = 'กำลังแก้... ⚡';
-  } else if (st === 'COOKIE_BROKEN' || st === 'INVALID' || st === 'WRONG_PASSWORD') {
+  } else if (st === 'COOKIE_BROKEN' || st === 'INVALID' || st === 'INV' || st === 'WRONG_PASSWORD') {
     cls = 'status-COOKIE_BROKEN';
     text = 'Cookie แตก / รหัสผ่านผิด 🔑';
   } else if (st === 'FACE_LOCK') {

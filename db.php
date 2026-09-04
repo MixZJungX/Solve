@@ -222,15 +222,19 @@ class DB {
 
             $sCount = 0;
             $fCount = 0;
+            $skCount = 0;
             if (!empty($r['accounts_detail'])) {
                 foreach ($r['accounts_detail'] as $item) {
-                    $st = strtoupper($item['status'] ?? '');
+                    $st = strtoupper(trim($item['status'] ?? ''));
                     if (in_array($st, ['COMPLETED', 'SUCCESS'])) $sCount++;
-                    elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK', 'WRONG_PASSWORD', 'INVALID', 'TWO_STEP', 'BANNED'])) $fCount++;
+                    elseif (in_array($st, ['SKIP', 'SKIPPED', 'NO_CAPTCHA'])) $skCount++;
+                    elseif (in_array($st, ['FAILED', 'FAIL', 'ERROR', 'COOKIE_BROKEN', 'FACE_LOCK', 'FACELOCK', 'WRONG_PASSWORD', 'INVALID', 'INV', 'TWO_STEP', '2STEP', '2FA', 'BANNED', 'BAN'])) $fCount++;
+                    elseif (!empty($st) && !in_array($st, ['PENDING', 'PROCESSING', 'QUEUED'])) $fCount++;
                 }
             }
             $r['success_count'] = $sCount;
             $r['fail_count'] = $fCount;
+            $r['skip_count'] = $skCount;
         }
         return $rows;
     }

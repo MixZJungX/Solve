@@ -591,7 +591,7 @@ textarea {
   border: 1px solid rgba(248, 113, 113, 0.3);
 }
 
-.status-COOKIE_BROKEN, .status-INVALID, .status-WRONG_PASSWORD { 
+.status-COOKIE_BROKEN, .status-INVALID, .status-INV, .status-WRONG_PASSWORD { 
   background: rgba(249, 115, 22, 0.15); 
   color: #fb923c; 
   border: 1px solid rgba(249, 115, 22, 0.4);
@@ -678,6 +678,11 @@ textarea {
 .pulse-dot.failed {
   background: var(--red);
   box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+}
+
+.pulse-dot.warning {
+  background: var(--yellow);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
 }
 
 @keyframes progressStripes {

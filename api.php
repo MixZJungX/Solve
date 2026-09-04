@@ -245,13 +245,17 @@ try {
                 if ($accRes['status'] === 200 && isset($accRes['data']['data']['accounts'])) {
                     foreach ($accRes['data']['data']['accounts'] as $item) {
                         $u = explode(':', $item['combo'] ?? '')[0] ?? 'Unknown';
-                        $st = strtoupper($item['status'] ?? 'PENDING');
+                        $st = strtoupper(trim($item['status'] ?? 'PENDING'));
                         if (in_array($st, ['COMPLETED', 'SUCCESS'])) {
                             $successCount++;
-                        } elseif ($st === 'SKIP') {
+                        } elseif (in_array($st, ['SKIP', 'SKIPPED', 'NO_CAPTCHA'])) {
                             $skipCount++;
-                        } elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK', 'WRONG_PASSWORD', 'INVALID', 'TWO_STEP', 'BANNED'])) {
+                        } elseif (in_array($st, ['FAILED', 'FAIL', 'ERROR', 'COOKIE_BROKEN', 'FACE_LOCK', 'FACELOCK', 'WRONG_PASSWORD', 'INVALID', 'INV', 'TWO_STEP', '2STEP', '2FA', 'BANNED', 'BAN'])) {
                             $failCount++;
+                        } else {
+                            if (in_array(strtoupper($info['status'] ?? ''), ['COMPLETED', 'FAILED']) && !in_array($st, ['PENDING', 'PROCESSING', 'QUEUED'])) {
+                                $failCount++;
+                            }
                         }
                         $accountsDetail[] = [
                             'username' => $u,
@@ -269,8 +273,8 @@ try {
                     $skipCount = (int)($info['skip_accounts'] ?? 0);
                 }
 
-                // If job completed and no accountsDetail, mark job accounts completed
-                if (($info['status'] ?? '') === 'COMPLETED' && empty($accountsDetail)) {
+                // If job completed and no accountsDetail, mark job accounts completed ONLY if no failures
+                if (($info['status'] ?? '') === 'COMPLETED' && empty($accountsDetail) && $failCount === 0 && empty($info['fail_accounts'])) {
                     $localJobCheck = DB::getJob($id);
                     if (!empty($localJobCheck['accounts'])) {
                         foreach ($localJobCheck['accounts'] as $u) {
@@ -313,11 +317,14 @@ try {
                 if ($localJob) {
                     $sCount = 0;
                     $fCount = 0;
+                    $skCount = 0;
                     if (!empty($localJob['accounts_detail'])) {
                         foreach ($localJob['accounts_detail'] as $a) {
-                            $st = strtoupper($a['status'] ?? '');
+                            $st = strtoupper(trim($a['status'] ?? ''));
                             if (in_array($st, ['COMPLETED', 'SUCCESS'])) $sCount++;
-                            elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK', 'WRONG_PASSWORD', 'INVALID', 'TWO_STEP', 'BANNED'])) $fCount++;
+                            elseif (in_array($st, ['SKIP', 'SKIPPED', 'NO_CAPTCHA'])) $skCount++;
+                            elseif (in_array($st, ['FAILED', 'FAIL', 'ERROR', 'COOKIE_BROKEN', 'FACE_LOCK', 'FACELOCK', 'WRONG_PASSWORD', 'INVALID', 'INV', 'TWO_STEP', '2STEP', '2FA', 'BANNED', 'BAN'])) $fCount++;
+                            elseif (!empty($st) && !in_array($st, ['PENDING', 'PROCESSING', 'QUEUED'])) $fCount++;
                         }
                     }
                     jsonResponse([
@@ -328,7 +335,9 @@ try {
                             'total_accounts' => $localJob['total_accounts'],
                             'success_count' => $sCount,
                             'fail_count' => $fCount,
-                            'accounts' => $localJob['accounts']
+                            'skip_count' => $skCount,
+                            'accounts' => $localJob['accounts'],
+                            'accounts_detail' => $localJob['accounts_detail'] ?? []
                         ]
                     ]);
                 } else {
