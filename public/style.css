@@ -616,9 +616,9 @@ textarea {
 }
 
 .status-SKIP { 
-  background: rgba(100, 116, 139, 0.15); 
-  color: #94a3b8; 
-  border: 1px solid rgba(100, 116, 139, 0.3);
+  background: rgba(20, 184, 166, 0.15); 
+  color: #2dd4bf; 
+  border: 1px solid rgba(45, 212, 191, 0.45);
 }
 
 /* Captcha Live ADHD Progress Bar */

@@ -267,7 +267,7 @@ function renderStatusTag(status) {
     text = 'ไม่สำเร็จ ❌';
   } else if (st === 'SKIP') {
     cls = 'status-SKIP';
-    text = 'ข้าม ⏩';
+    text = 'ไม่มีแคปช่า / ผ่านแล้ว ✨';
   }
   return `<span class="job-status-badge ${cls}" style="font-size:11px;padding:3px 8px;">${text}</span>`;
 }

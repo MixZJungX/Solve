@@ -236,8 +236,22 @@ async function pollJobStatus() {
         modeBadge.textContent = isX2 ? '⚡ เร่งด่วน x2' : '⏳ คิวปกติ';
       }
 
-      document.getElementById('custSuccess').textContent = job.success_count ?? 0;
-      document.getElementById('custFail').textContent = job.fail_count ?? 0;
+      const sCount = job.success_count ?? 0;
+      const skCount = job.skip_count ?? 0;
+      const fCount = job.fail_count ?? 0;
+
+      const successEl = document.getElementById('custSuccess');
+      if (sCount === 0 && skCount > 0) {
+        successEl.textContent = `${skCount} (พร้อมเล่น)`;
+        successEl.style.color = '#2dd4bf';
+      } else if (sCount > 0 && skCount > 0) {
+        successEl.textContent = `${sCount} (+${skCount})`;
+        successEl.style.color = 'var(--green)';
+      } else {
+        successEl.textContent = sCount;
+        successEl.style.color = 'var(--green)';
+      }
+      document.getElementById('custFail').textContent = fCount;
 
       // Table breakdown with True Status & Helpful Subtitles
       const wrapper = document.getElementById('custAccountsWrapper');
@@ -286,15 +300,15 @@ async function pollJobStatus() {
         const isAllSkipped = job.accounts_detail && job.accounts_detail.length > 0 && job.accounts_detail.every(a => a.status === 'SKIP');
 
         if (isAllSkipped) {
-          finishEl.style.background = 'rgba(251, 191, 36, 0.12)';
-          finishEl.style.borderColor = 'rgba(251, 191, 36, 0.35)';
-          finishEl.style.color = 'var(--yellow)';
+          finishEl.style.background = 'rgba(20, 184, 166, 0.12)';
+          finishEl.style.borderColor = 'rgba(45, 212, 191, 0.4)';
+          finishEl.style.color = '#2dd4bf';
           finishEl.innerHTML = `
-            <div style="font-weight:700;margin-bottom:4px;">⏳ ไอดีนี้กำลังถูกแก้อยู่ในคิวก่อนหน้า ณ ขณะนั้น (ระบบป้องกันไม่ให้เสียเงินซ้ำ)</div>
-            <div style="font-size:12px;opacity:0.9;line-height:1.5;">ระบบของ Highspec ตรวจพบว่าเพิ่งมีการส่งไอดีนี้ไปและงานเดิมยังทำอยู่ จึงข้ามคำสั่งที่กดซ้ำให้อัตโนมัติ (ไม่คิดเงิน) — <b>เมื่อคิวเดิมเสร็จแล้ว คุณสามารถกดส่งแก้ใหม่อีกกี่รอบก็ได้ตลอดเวลาครับ!</b></div>
-            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="margin-top:10px;font-size:12px;cursor:pointer;">🔄 ปิดหน้านี้แล้วส่งใหม่อีกรอบ</button>
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;">✨ บัญชีนี้ไม่มีแคปช่าติดค้าง หรือผ่านการแก้ไขแล้ว!</div>
+            <div style="font-size:12px;opacity:0.95;line-height:1.5;">ระบบตรวจพบว่าบัญชีนี้เข้าเล่นเกมได้ตามปกติ ไม่พบด่านแคปช่า Roblox ที่ต้องแก้ (ระบบไม่คิดเงินค่าบริการ) สามารถเข้าเล่นแมพได้ทันทีครับ</div>
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="margin-top:10px;font-size:12px;cursor:pointer;">✨ ตรวจสอบไอดีอื่น / เริ่มรายการใหม่</button>
           `;
-          showToast('ไอดีนี้กำลังแก้อยู่ในคิวก่อนหน้า ระบบข้ามคำสั่งที่กดซ้ำให้', 'info');
+          showToast('บัญชีนี้ไม่มีแคปช่า พร้อมเข้าเล่นได้ทันที (ไม่คิดเงิน)', 'success');
         } else if (job.status === 'COMPLETED') {
           finishEl.style.background = 'rgba(52, 211, 153, 0.1)';
           finishEl.style.borderColor = 'rgba(52, 211, 153, 0.3)';
@@ -404,8 +418,8 @@ function getAccountStatusInfo(status) {
   if (st === 'SKIP') {
     return {
       cls: 'status-SKIP',
-      text: 'ข้าม (กำลังทำในคิวก่อนหน้า) ⏩',
-      desc: 'ขณะกดส่ง ไอดีนี้กำลังอยู่ในคิวแก้อยู่แล้ว ระบบจึงข้ามคำสั่งที่กดซ้ำให้ (ไม่คิดเงิน) — เมื่อคิวเดิมเสร็จ สามารถส่งแก้ใหม่ได้เรื่อย ๆ ครับ'
+      text: 'ไม่ต้องแก้ (ไม่มีแคปช่า / ผ่านอยู่แล้ว) ✨',
+      desc: 'ระบบตรวจพบว่าบัญชีนี้ไม่มีด่านแคปช่าติดค้าง หรือผ่านการแก้ไขแล้ว สามารถเข้าเล่นเกมได้ทันที (ระบบไม่คิดค่าบริการ)'
     };
   }
 

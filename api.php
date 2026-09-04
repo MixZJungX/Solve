@@ -240,6 +240,7 @@ try {
                 $accountsDetail = [];
                 $successCount = 0;
                 $failCount = 0;
+                $skipCount = 0;
 
                 if ($accRes['status'] === 200 && isset($accRes['data']['data']['accounts'])) {
                     foreach ($accRes['data']['data']['accounts'] as $item) {
@@ -247,6 +248,8 @@ try {
                         $st = strtoupper($item['status'] ?? 'PENDING');
                         if (in_array($st, ['COMPLETED', 'SUCCESS'])) {
                             $successCount++;
+                        } elseif ($st === 'SKIP') {
+                            $skipCount++;
                         } elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK', 'WRONG_PASSWORD', 'INVALID', 'TWO_STEP', 'BANNED'])) {
                             $failCount++;
                         }
@@ -263,6 +266,7 @@ try {
                 } elseif (isset($info['success_accounts'])) {
                     $successCount = (int)$info['success_accounts'];
                     $failCount = (int)$info['fail_accounts'];
+                    $skipCount = (int)($info['skip_accounts'] ?? 0);
                 }
 
                 // If job completed and no accountsDetail, mark job accounts completed
@@ -299,6 +303,7 @@ try {
                         'total_accounts' => $localJob['total_accounts'] ?? count($localJob['accounts'] ?? []),
                         'success_count' => $successCount,
                         'fail_count' => $failCount,
+                        'skip_count' => $skipCount,
                         'accounts' => $localJob['accounts'] ?? [],
                         'accounts_detail' => $accountsDetail
                     ]
