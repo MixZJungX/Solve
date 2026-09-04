@@ -677,6 +677,51 @@ try {
             }
             break;
 
+        case 'download_database':
+            $token = $_GET['token'] ?? '';
+            $adminPass = DB::getSetting('admin_password', 'admin1234');
+            $expectedToken = hash('sha256', $adminPass . '_lemon_salt_2026');
+            if (!isAdmin() && $token !== $expectedToken && $token !== $adminPass) {
+                requireAdmin();
+            }
+            $dbFile = __DIR__ . '/data/highspec.db';
+            if (!file_exists($dbFile)) {
+                jsonResponse(['success' => false, 'error' => 'ไม่พบไฟล์ Database'], 404);
+            }
+            header('Content-Type: application/octet-stream');
+            header('Content-Disposition: attachment; filename="highspec.db"');
+            header('Content-Length: ' . filesize($dbFile));
+            readfile($dbFile);
+            exit;
+
+        case 'export_accounts_text':
+            requireAdmin();
+            $accounts = DB::listAccounts(100000);
+            $lines = [];
+            foreach ($accounts as $a) {
+                $lines[] = $a['username'] . ':' . ($a['password'] ?: 'BLANK') . ':' . $a['cookie'];
+            }
+            header('Content-Type: text/plain; charset=utf-8');
+            header('Content-Disposition: attachment; filename="lemon_accounts_' . date('Y-m-d') . '.txt"');
+            echo implode("\n", $lines);
+            exit;
+
+        case 'upload_database':
+            requireAdmin();
+            if (empty($_FILES['db_file']) || $_FILES['db_file']['error'] !== UPLOAD_ERR_OK) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาเลือกไฟล์ .db ที่ถูกต้อง'], 400);
+            }
+            $target = __DIR__ . '/data/highspec.db';
+            if (!is_dir(dirname($target))) {
+                mkdir(dirname($target), 0777, true);
+            }
+            if (move_uploaded_file($_FILES['db_file']['tmp_name'], $target)) {
+                jsonResponse(['success' => true, 'message' => 'อัปโหลดและแทนที่ Database สำเร็จเรียบร้อย']);
+            } else {
+                jsonResponse(['success' => false, 'error' => 'ไม่สามารถบันทึกไฟล์ Database ได้'], 500);
+            }
+            break;
+
         default:
             jsonResponse(['success' => false, 'error' => 'Action ไม่ถูกต้อง: ' . htmlspecialchars($action)], 404);
             break;

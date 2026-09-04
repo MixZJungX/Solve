@@ -140,17 +140,27 @@
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
               <button class="btn btn-primary btn-sm" id="btnAdminBulkImport">
                 <span>📥</span>
-                <span>นำเข้าแบบ Combo (Bulk Import)</span>
+                <span>นำเข้าแบบ Combo</span>
               </button>
               <button class="btn btn-secondary btn-sm" id="btnAdminAddSingle">
                 <span>+</span>
                 <span>เพิ่มทีละบัญชี</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btnAdminDownloadDb" title="ดาวน์โหลดไฟล์ highspec.db สดจากเซิร์ฟเวอร์">
+                <span>💾</span>
+                <span>สำรอง Database (.db)</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" id="btnAdminExportTxt" title="ส่งออกรายชื่อบัญชีทั้งหมดเป็น combo text">
+                <span>📋</span>
+                <span>ส่งออก (.txt)</span>
               </button>
               <button class="btn btn-danger btn-sm" id="btnAdminClearAll" style="background:#dc2626;border-color:#b91c1c;">
                 <span>🗑️</span>
                 <span>ล้างบัญชีทั้งหมด</span>
               </button>
             </div>
+            <!-- Hidden file input for DB restore -->
+            <input type="file" id="adminDbUploadInput" accept=".db" style="display:none;" />
           </div>
 
           <!-- Search Bar -->

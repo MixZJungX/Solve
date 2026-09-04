@@ -314,6 +314,18 @@ document.getElementById('btnAdminClearAll')?.addEventListener('click', async () 
   }
 });
 
+// Download Database (.db)
+document.getElementById('btnAdminDownloadDb')?.addEventListener('click', () => {
+  showToast('กำลังดาวน์โหลดไฟล์ Database ปัจจุบัน...', 'info');
+  window.location.href = '/api.php?action=download_database';
+});
+
+// Export Accounts to Text File (.txt)
+document.getElementById('btnAdminExportTxt')?.addEventListener('click', () => {
+  showToast('กำลังส่งออกบัญชีทั้งหมดเป็นไฟล์ .txt...', 'info');
+  window.location.href = '/api.php?action=export_accounts_text';
+});
+
 // Bulk Import
 document.getElementById('btnAdminBulkImport')?.addEventListener('click', () => {
   openModal('modalBulkImport');
