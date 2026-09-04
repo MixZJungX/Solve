@@ -226,7 +226,7 @@ class DB {
                 foreach ($r['accounts_detail'] as $item) {
                     $st = strtoupper($item['status'] ?? '');
                     if (in_array($st, ['COMPLETED', 'SUCCESS'])) $sCount++;
-                    elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK'])) $fCount++;
+                    elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK', 'WRONG_PASSWORD', 'INVALID', 'TWO_STEP', 'BANNED'])) $fCount++;
                 }
             }
             $r['success_count'] = $sCount;

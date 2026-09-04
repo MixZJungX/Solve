@@ -247,7 +247,7 @@ try {
                         $st = strtoupper($item['status'] ?? 'PENDING');
                         if (in_array($st, ['COMPLETED', 'SUCCESS'])) {
                             $successCount++;
-                        } elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK'])) {
+                        } elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK', 'WRONG_PASSWORD', 'INVALID', 'TWO_STEP', 'BANNED'])) {
                             $failCount++;
                         }
                         $accountsDetail[] = [
@@ -297,7 +297,7 @@ try {
                         foreach ($localJob['accounts_detail'] as $a) {
                             $st = strtoupper($a['status'] ?? '');
                             if (in_array($st, ['COMPLETED', 'SUCCESS'])) $sCount++;
-                            elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK'])) $fCount++;
+                            elseif (in_array($st, ['FAILED', 'COOKIE_BROKEN', 'FACE_LOCK', 'WRONG_PASSWORD', 'INVALID', 'TWO_STEP', 'BANNED'])) $fCount++;
                         }
                     }
                     jsonResponse([

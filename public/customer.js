@@ -1,7 +1,20 @@
-// public/customer.js — Client-side logic for Lemon shop Customer Portal
+// public/customer.js — Customer Portal Logic for Lemon shop Solve | Helper
 
 let activeJobId = null;
 let pollTimer = null;
+let progressTimer = null;
+let currentProgress = 0;
+let progressStartTime = null;
+
+const ADHD_STAGES = [
+  { at: 0,  text: "🚀 [1/5] กำลังส่งคำขอและเชื่อมต่อเซิร์ฟเวอร์ AI...", hint: "เตรียมพร้อมเริ่มระบบแก้แคปช่า Roblox" },
+  { at: 15, text: "🔍 [2/5] ตรวจสอบ Token และวิเคราะห์โจทย์ Funcaptcha...", hint: "ระบบกำลังตรวจจับด่านป้องกันของแมพ" },
+  { at: 35, text: "🤖 [3/5] AI กำลังประมวลผลหมุนรูปภาพและแก้โจทย์...", hint: "กำลังแก้แคปช่าอัตโนมัติ ห้ามปิดหน้านี้!" },
+  { at: 65, text: "🛡️ [4/5] ยืนยันคำตอบกับเซิร์ฟเวอร์ Roblox ป้องกันหลุด...", hint: "ใกล้เสร็จแล้ว! AI ทำงานสำเร็จไปกว่า 70%" },
+  { at: 85, text: "⚡ [5/5] รอ Roblox บันทึกเซสชัน... เกือบเสร็จแล้ว!", hint: "อีกนิดเดียวเท่านั้น กำลังจะถึงเส้นชัยแล้ว..." },
+  { at: 94, text: "⏳ รอเซิร์ฟเวอร์ตอบรับและยืนยันการเข้าเกม...", hint: "กำลังตรวจสอบผลลัพธ์รอบสุดท้าย..." },
+  { at: 100, text: "🎉 เสร็จสมบูรณ์แล้ว! สามารถเข้าเล่นแมพได้ทันที", hint: "ปลดล็อคสำเร็จ 100%!" }
+];
 
 function showToast(message, type = 'info') {
   const container = document.getElementById('toastContainer');
@@ -18,35 +31,33 @@ function showToast(message, type = 'info') {
     toast.style.transform = 'translateX(40px)';
     toast.style.transition = 'all 0.3s ease';
     setTimeout(() => toast.remove(), 300);
-  }, 4500);
+  }, 4000);
 }
 
-// Update account count badge as customer types
-const textarea = document.getElementById('custUsernames');
-const countBadge = document.getElementById('custCountBadge');
+// Dynamic counter for usernames in textarea
+const custTextarea = document.getElementById('custUsernames');
+custTextarea?.addEventListener('input', () => {
+  const text = custTextarea.value.trim();
+  if (!text) {
+    document.getElementById('custCountBadge').textContent = '0';
+    return;
+  }
+  const lines = text.split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l.length > 0);
+  document.getElementById('custCountBadge').textContent = lines.length;
+});
 
-function updateCount() {
-  const val = textarea.value.trim();
-  const list = val ? [...new Set(val.split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean))] : [];
-  if (countBadge) countBadge.textContent = list.length;
-}
-
-textarea?.addEventListener('input', updateCount);
-
-// Submit form
+// Submit Captcha Form
 document.getElementById('formCustomerSubmit')?.addEventListener('submit', async (e) => {
   e.preventDefault();
+  const text = document.getElementById('custUsernames').value.trim();
+  if (!text) return showToast('กรุณาระบุชื่อตัวละครอย่างน้อย 1 ชื่อ', 'error');
 
-  const val = textarea.value.trim();
-  const usernames = val ? [...new Set(val.split(/[\r\n,]+/).map(s => s.trim()).filter(Boolean))] : [];
-
-  if (usernames.length === 0) {
-    return showToast('กรุณากรอกชื่อตัวละครอย่างน้อย 1 ชื่อ', 'error');
-  }
+  const usernames = text.split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l.length > 0);
+  if (usernames.length === 0) return showToast('กรุณาระบุชื่อตัวละครอย่างน้อย 1 ชื่อ', 'error');
 
   const btn = document.getElementById('btnCustSubmit');
   btn.disabled = true;
-  btn.innerHTML = '<span>⏳</span><span>กำลังส่งข้อมูลแก้แคปช่า...</span>';
+  btn.innerHTML = '<span>⏳</span><span>กำลังส่งงานแก้แคปช่า...</span>';
 
   try {
     const res = await fetch('/api.php?action=customer_submit', {
@@ -96,8 +107,93 @@ function startLiveTracking(jobId, initialData = null) {
     setJobBadge(initialData.status || 'PENDING');
   }
 
+  // Start the ADHD live animated progress bar
+  startFakeProgressBar();
+
   pollJobStatus();
   pollTimer = setInterval(pollJobStatus, 3000);
+}
+
+// ADHD Progress Bar Controller
+function startFakeProgressBar() {
+  if (progressTimer) clearInterval(progressTimer);
+  currentProgress = 6;
+  progressStartTime = Date.now();
+  updateProgressBarUI(currentProgress);
+
+  progressTimer = setInterval(() => {
+    // Elapsed time calculation
+    const elapsed = Math.floor((Date.now() - progressStartTime) / 1000);
+    const mm = String(Math.floor(elapsed / 60)).padStart(2, '0');
+    const ss = String(elapsed % 60).padStart(2, '0');
+    const timeEl = document.getElementById('custProgressTimer');
+    if (timeEl) timeEl.textContent = `⏱️ ${mm}:${ss}`;
+
+    // ADHD satisfaction curve: fast early dopamine, steady middle, slow crawling near goal
+    if (currentProgress < 30) {
+      currentProgress += Math.random() * 4.5 + 2.5;
+    } else if (currentProgress < 65) {
+      currentProgress += Math.random() * 2.8 + 1.2;
+    } else if (currentProgress < 85) {
+      currentProgress += Math.random() * 1.4 + 0.6;
+    } else if (currentProgress < 94) {
+      currentProgress += Math.random() * 0.4 + 0.1;
+    }
+
+    if (currentProgress > 95) currentProgress = 95;
+    updateProgressBarUI(currentProgress);
+  }, 450);
+}
+
+function completeFakeProgressBar() {
+  if (progressTimer) clearInterval(progressTimer);
+  currentProgress = 100;
+  updateProgressBarUI(100, true);
+}
+
+function updateProgressBarUI(pct, isFinished = false) {
+  const rounded = Math.min(100, Math.floor(pct));
+  const bar = document.getElementById('custProgressBar');
+  const percentEl = document.getElementById('custProgressPercent');
+  const stageEl = document.getElementById('custProgressStage');
+  const hintEl = document.getElementById('custProgressHint');
+  const dot = document.getElementById('custProgressDot');
+
+  if (bar) {
+    bar.style.width = `${rounded}%`;
+    if (isFinished) {
+      bar.classList.add('completed');
+    } else {
+      bar.classList.remove('completed');
+    }
+  }
+
+  if (percentEl) {
+    percentEl.textContent = `${rounded}%`;
+    if (isFinished) {
+      percentEl.style.color = 'var(--green)';
+    } else {
+      percentEl.style.color = 'var(--lemon)';
+    }
+  }
+
+  // Find matching stage
+  let matchedStage = ADHD_STAGES[0];
+  for (const s of ADHD_STAGES) {
+    if (rounded >= s.at) {
+      matchedStage = s;
+    }
+  }
+
+  if (stageEl) {
+    stageEl.textContent = isFinished ? '🎉 ดำเนินการเสร็จสิ้นเรียบร้อยแล้ว!' : matchedStage.text;
+  }
+  if (hintEl) {
+    hintEl.textContent = isFinished ? 'สำเร็จ 100%! บัญชีพร้อมเข้าเล่นเกมได้ทันที' : matchedStage.hint;
+  }
+  if (dot && isFinished) {
+    dot.className = 'pulse-dot completed';
+  }
 }
 
 async function pollJobStatus() {
@@ -143,24 +239,39 @@ async function pollJobStatus() {
       document.getElementById('custSuccess').textContent = job.success_count ?? 0;
       document.getElementById('custFail').textContent = job.fail_count ?? 0;
 
-      // Table breakdown
+      // Table breakdown with True Status & Helpful Subtitles
       const wrapper = document.getElementById('custAccountsWrapper');
       const tbody = document.getElementById('custAccountsTable');
 
       if (job.accounts_detail && job.accounts_detail.length > 0) {
         wrapper.style.display = 'block';
-        tbody.innerHTML = job.accounts_detail.map(item => `
-          <tr>
-            <td style="font-weight:600;font-family:var(--font-mono);">${item.username}</td>
-            <td style="text-align:right;">${renderStatusPill(item.status)}</td>
-          </tr>
-        `).join('');
+        tbody.innerHTML = job.accounts_detail.map(item => {
+          const info = getAccountStatusInfo(item.status);
+          return `
+            <tr>
+              <td>
+                <div style="font-weight:600;font-family:var(--font-mono);font-size:14px;color:#fff;">${item.username}</div>
+                ${info.desc ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;line-height:1.4;">${info.desc}</div>` : ''}
+              </td>
+              <td style="text-align:right;vertical-align:middle;">
+                <span class="job-status-badge ${info.cls}" style="font-size:11px;padding:4px 10px;white-space:nowrap;">
+                  ${info.text}
+                </span>
+              </td>
+            </tr>
+          `;
+        }).join('');
       } else if (job.accounts && job.accounts.length > 0) {
         wrapper.style.display = 'block';
         tbody.innerHTML = job.accounts.map(u => `
           <tr>
-            <td style="font-weight:600;font-family:var(--font-mono);">${u}</td>
-            <td style="text-align:right;"><span class="job-status-badge status-PENDING">กำลังรอคิว...</span></td>
+            <td>
+              <div style="font-weight:600;font-family:var(--font-mono);font-size:14px;color:#fff;">${u}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">กำลังรอระบบเริ่มทำงานตามคิว</div>
+            </td>
+            <td style="text-align:right;vertical-align:middle;">
+              <span class="job-status-badge status-PENDING" style="font-size:11px;padding:4px 10px;">รอคิว... ⏳</span>
+            </td>
           </tr>
         `).join('');
       }
@@ -168,6 +279,7 @@ async function pollJobStatus() {
       if (job.status === 'COMPLETED' || job.status === 'FAILED') {
         clearInterval(pollTimer);
         pollTimer = null;
+        completeFakeProgressBar();
         document.getElementById('custFinishMsg').style.display = 'block';
         if (job.status === 'COMPLETED') {
           showToast('แก้แคปช่าเสร็จสิ้นเรียบร้อยแล้ว!', 'success');
@@ -191,20 +303,96 @@ function setJobBadge(status) {
   else badge.textContent = status;
 }
 
-function renderStatusPill(status) {
-  let cls = 'status-PENDING';
-  let text = status;
-  if (status === 'COMPLETED' || status === 'SUCCESS') {
-    cls = 'status-COMPLETED';
-    text = 'สำเร็จ ✅';
-  } else if (status === 'PROCESSING') {
-    cls = 'status-PROCESSING';
-    text = 'กำลังทำ...';
-  } else if (status === 'FAILED' || status === 'COOKIE_BROKEN') {
-    cls = 'status-FAILED';
-    text = 'ไม่ผ่าน ❌';
+// True Account Status Explanations (Clear, transparent, customer-friendly)
+function getAccountStatusInfo(status) {
+  const st = String(status || 'PENDING').toUpperCase();
+
+  if (st === 'COMPLETED' || st === 'SUCCESS') {
+    return {
+      cls: 'status-COMPLETED',
+      text: 'สำเร็จ ✅',
+      desc: 'แก้แคปช่าผ่านเรียบร้อย สามารถเข้าเล่นแมพได้ทันที'
+    };
   }
-  return `<span class="job-status-badge ${cls}" style="font-size:11px;padding:2px 8px;">${text}</span>`;
+
+  if (st === 'PROCESSING') {
+    return {
+      cls: 'status-PROCESSING',
+      text: 'กำลังแก้... ⚡',
+      desc: 'AI กำลังวิเคราะห์โจทย์รูปภาพและส่งคำตอบ'
+    };
+  }
+
+  if (st === 'PENDING') {
+    return {
+      cls: 'status-PENDING',
+      text: 'รอคิว... ⏳',
+      desc: 'อยู่ในคิวรอระบบเริ่มประมวลผล'
+    };
+  }
+
+  if (st === 'COOKIE_BROKEN' || st === 'INVALID' || st === 'WRONG_PASSWORD') {
+    return {
+      cls: 'status-COOKIE_BROKEN',
+      text: 'Cookie แตก / เปลี่ยนรหัสผ่าน 🔑',
+      desc: 'ลูกค้าเปลี่ยนรหัสผ่าน Roblox หรือ Cookie หลุด/หมดอายุ ต้องอัปเดต Cookie ใหม่ในระบบ'
+    };
+  }
+
+  if (st === 'FACE_LOCK') {
+    return {
+      cls: 'status-FACE_LOCK',
+      text: 'ติดสแกนหน้า (Face Lock) 👤',
+      desc: 'บัญชีนี้ติดระบบยืนยันตัวตนสแกนใบหน้าของ Roblox กรุณาปลดสแกนหน้าในเกม'
+    };
+  }
+
+  if (st === 'TWO_STEP' || st === '2STEP') {
+    return {
+      cls: 'status-TWO_STEP',
+      text: 'ติดรหัส 2 ชั้น (2-Step) 📱',
+      desc: 'บัญชีติดรหัสยืนยัน 2 ขั้นตอน (Authenticator หรือ Email)'
+    };
+  }
+
+  if (st === 'BANNED') {
+    return {
+      cls: 'status-BANNED',
+      text: 'บัญชีถูกแบน (Banned) ⛔',
+      desc: 'บัญชีนี้ถูกระงับการใช้งานโดย Roblox'
+    };
+  }
+
+  if (st === 'RATE_LIMIT') {
+    return {
+      cls: 'status-PENDING',
+      text: 'ติด Rate Limit ชั่วคราว ⏳',
+      desc: 'ส่งคำขอถี่เกินไป ระบบกำลังเว้นช่วงและจะลองใหม่อัตโนมัติ'
+    };
+  }
+
+  if (st === 'SKIP') {
+    return {
+      cls: 'status-SKIP',
+      text: 'ข้าม (มีในคิวเดิม) ⏩',
+      desc: 'บัญชีนี้กำลังทำงานอยู่ในคิวรอบก่อนหน้าที่ยังไม่เสร็จ'
+    };
+  }
+
+  if (st === 'FAILED') {
+    return {
+      cls: 'status-FAILED',
+      text: 'แก้ไม่สำเร็จ (คืนเงินแล้ว) ❌',
+      desc: 'AI ไม่สามารถแก้โจทย์แคปช่าได้ ระบบคืนเงินค่าบริการให้เรียบร้อยแล้ว'
+    };
+  }
+
+  // Generic Fallback
+  return {
+    cls: 'status-FAILED',
+    text: `${status} ❌`,
+    desc: 'สถานะไม่ผ่านการทดสอบ'
+  };
 }
 
 document.getElementById('btnCustRefresh')?.addEventListener('click', () => {

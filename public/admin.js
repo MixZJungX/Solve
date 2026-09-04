@@ -240,11 +240,36 @@ async function loadAdminAccounts(query = '') {
 
 function renderStatusTag(status) {
   if (!status) return '<span style="color:var(--text-dim);">-</span>';
+  const st = String(status).toUpperCase();
   let cls = 'status-PENDING';
-  if (status === 'COMPLETED' || status === 'SUCCESS') cls = 'status-COMPLETED';
-  if (status === 'PROCESSING') cls = 'status-PROCESSING';
-  if (status === 'FAILED' || status === 'COOKIE_BROKEN') cls = 'status-FAILED';
-  return `<span class="job-status-badge ${cls}" style="font-size:11px;padding:3px 8px;">${status}</span>`;
+  let text = status;
+
+  if (st === 'COMPLETED' || st === 'SUCCESS') {
+    cls = 'status-COMPLETED';
+    text = 'สำเร็จ ✅';
+  } else if (st === 'PROCESSING') {
+    cls = 'status-PROCESSING';
+    text = 'กำลังแก้... ⚡';
+  } else if (st === 'COOKIE_BROKEN' || st === 'INVALID' || st === 'WRONG_PASSWORD') {
+    cls = 'status-COOKIE_BROKEN';
+    text = 'Cookie แตก / รหัสผ่านผิด 🔑';
+  } else if (st === 'FACE_LOCK') {
+    cls = 'status-FACE_LOCK';
+    text = 'ติดสแกนหน้า 👤';
+  } else if (st === 'TWO_STEP' || st === '2STEP') {
+    cls = 'status-TWO_STEP';
+    text = 'ติด 2-Step 📱';
+  } else if (st === 'BANNED') {
+    cls = 'status-BANNED';
+    text = 'ถูกแบน ⛔';
+  } else if (st === 'FAILED') {
+    cls = 'status-FAILED';
+    text = 'ไม่สำเร็จ ❌';
+  } else if (st === 'SKIP') {
+    cls = 'status-SKIP';
+    text = 'ข้าม ⏩';
+  }
+  return `<span class="job-status-badge ${cls}" style="font-size:11px;padding:3px 8px;">${text}</span>`;
 }
 
 function copyText(text) {
