@@ -227,8 +227,8 @@ function updateProgressBarUI(pct, isFinished = false, job = null) {
 
   if (hintEl) {
     if (isFinished) {
-      if (isAllFailed) hintEl.innerHTML = '<span style="color:#f87171;font-weight:600;">⚠️ ไม่สามารถเข้าเกมได้ ตรวจสอบสาเหตุและวิธีแก้ด้านล่าง (ระบบคืนเงินแล้ว)</span>';
-      else if (isAllSkipped) hintEl.innerHTML = '<span style="color:#2dd4bf;font-weight:600;">ไอดีนี้ไม่มีแคปช่า หรือผ่านการแก้ไขแล้ว สามารถเข้าเล่นเกมได้ทันที (ไม่คิดเงิน)</span>';
+      if (isAllFailed) hintEl.innerHTML = '<span style="color:#f87171;font-weight:600;">⚠️ ไม่สามารถเข้าเกมได้ ตรวจสอบสาเหตุและวิธีแก้ไขด้านล่าง</span>';
+      else if (isAllSkipped) hintEl.innerHTML = '<span style="color:#2dd4bf;font-weight:600;">ไอดีนี้ไม่มีแคปช่า หรือผ่านการแก้ไขแล้ว สามารถเข้าเล่นเกมได้ทันที</span>';
       else if (isPartial) hintEl.innerHTML = '<span style="color:#fbbf24;font-weight:600;">ไอดีที่ผ่านสามารถเข้าเกมได้ ส่วนไอดีที่ไม่ผ่านกรุณาดูสาเหตุในกล่องด้านล่าง</span>';
       else hintEl.innerHTML = '<span style="color:var(--green);font-weight:600;">สำเร็จ 100%! บัญชีพร้อมเข้าเล่นเกมได้ทันที</span>';
     } else {
@@ -409,8 +409,7 @@ async function pollJobStatus() {
             </div>
             
             <div style="font-size:13px;color:#fca5a5;line-height:1.6;margin-bottom:14px;text-align:left;">
-              ระบบไม่สามารถดำเนินการแก้แคปช่าได้ เนื่องจากตรวจพบข้อผิดพลาดที่ตัวบัญชี Roblox ของท่าน <br>
-              <span style="color:#4ade80;font-weight:600;">💰 ระบบไม่ได้หักเงินค่าบริการ (คืนเงินให้เรียบร้อยแล้ว)</span>
+              ระบบไม่สามารถดำเนินการแก้แคปช่าได้ เนื่องจากตรวจพบข้อผิดพลาดที่ตัวบัญชี Roblox ของท่าน
             </div>
 
             <div style="margin-bottom:12px;">
@@ -439,13 +438,13 @@ async function pollJobStatus() {
               <span>บัญชีนี้ไม่มีแคปช่าติดค้าง หรือผ่านการแก้ไขแล้ว!</span>
             </div>
             <div style="font-size:13px;opacity:0.95;line-height:1.6;margin-bottom:14px;text-align:left;">
-              ระบบตรวจพบว่าบัญชีนี้เข้าเล่นเกมได้ตามปกติ ไม่พบด่านแคปช่า Roblox ที่ต้องแก้ <b>(ระบบไม่คิดเงินค่าบริการ)</b> สามารถเปิดเกมและเข้าเล่นแมพได้ทันทีครับ
+              ระบบตรวจพบว่าบัญชีนี้เข้าเล่นเกมได้ตามปกติ ไม่พบด่านแคปช่า Roblox ที่ต้องแก้ สามารถเปิดเกมและเข้าเล่นแมพได้ทันทีครับ
             </div>
             <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="font-size:12px;cursor:pointer;padding:8px 18px;">
               ✨ ตรวจสอบไอดีอื่น / เริ่มรายการใหม่
             </button>
           `;
-          showToast('บัญชีนี้ไม่มีแคปช่า พร้อมเข้าเล่นได้ทันที (ไม่คิดเงิน)', 'success');
+          showToast('บัญชีนี้ไม่มีแคปช่า พร้อมเข้าเล่นได้ทันที', 'success');
         } else if (isPartial) {
           const failedAccounts = (job.accounts_detail || []).filter(a => {
             const st = String(a.status || '').trim().toUpperCase();
@@ -478,7 +477,7 @@ async function pollJobStatus() {
               ⚠️ แก้แคปช่าสำเร็จบางส่วน (${sCount} ผ่าน / ${fCount} ไม่ผ่าน)
             </div>
             <div style="font-size:12px;opacity:0.95;line-height:1.6;margin-bottom:12px;text-align:left;">
-              ไอดีที่ผ่านสามารถเข้าเล่นเกมได้ทันที ส่วนไอดีที่ไม่ผ่านระบบไม่สามารถแก้ได้เนื่องจากปัญหาของตัวบัญชี <b>(คืนเงินสำหรับไอดีที่ไม่ผ่านแล้ว)</b>
+              ไอดีที่ผ่านสามารถเข้าเล่นเกมได้ทันที ส่วนไอดีที่ไม่ผ่านระบบไม่สามารถแก้ได้เนื่องจากปัญหาของตัวบัญชี
             </div>
             ${failedItemsHtml ? `<div style="margin-bottom:12px;">${failedItemsHtml}</div>` : ''}
             <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="font-size:12px;cursor:pointer;padding:8px 18px;">
@@ -501,8 +500,8 @@ async function pollJobStatus() {
           finishEl.style.borderColor = 'rgba(248, 113, 113, 0.35)';
           finishEl.style.color = 'var(--red)';
           finishEl.innerHTML = `
-            <div style="font-weight:700;font-size:15px;margin-bottom:6px;">❌ การประมวลผลล้มเหลว หรือถูกยกเลิก (ระบบคืนเงินแล้ว)</div>
-            <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:12px;">เซิร์ฟเวอร์แจ้งว่าคำขอนี้ไม่สามารถดำเนินการได้ ระบบได้ทำการคืนเงินค่าบริการให้ท่านเรียบร้อยแล้ว</div>
+            <div style="font-weight:700;font-size:15px;margin-bottom:6px;">❌ การประมวลผลล้มเหลว หรือถูกยกเลิก</div>
+            <div style="font-size:12px;opacity:0.9;line-height:1.5;margin-bottom:12px;">เซิร์ฟเวอร์แจ้งว่าคำขอนี้ไม่สามารถดำเนินการได้ กรุณาตรวจสอบความถูกต้องของบัญชี หรือลองใหม่อีกครั้ง</div>
             <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="font-size:12px;cursor:pointer;padding:8px 18px;">🔄 ลองใหม่อีกครั้ง</button>
           `;
         }
@@ -565,7 +564,7 @@ function getAccountStatusInfo(status) {
       text: 'Cookie แตก / เปลี่ยนรหัสผ่าน (Inv) 🔑',
       title: 'สถานะ Inv (Cookie แตก หรือ เปลี่ยนรหัสผ่าน)',
       desc: 'ลูกค้ามีการเปลี่ยนรหัสผ่าน Roblox หรือกดออกจากระบบ ทำให้ Cookie เดิมหมดอายุ ระบบไม่สามารถล็อกอินเข้าไปแก้แคปช่าได้',
-      solution: 'ต้องนำ Cookie หรือรหัสผ่านปัจจุบันของไอดีนี้มาอัปเดตใหม่ในระบบก่อนส่งแก้ (ระบบไม่ได้หักเงินคุณ / คืนเงินแล้ว)'
+      solution: 'ต้องนำ Cookie หรือรหัสผ่านปัจจุบันของไอดีนี้มาอัปเดตใหม่ในระบบก่อนส่งแก้'
     };
   }
 
@@ -614,7 +613,7 @@ function getAccountStatusInfo(status) {
       cls: 'status-SKIP',
       text: 'ไม่ต้องแก้ (ไม่มีแคปช่า / ผ่านแล้ว) ✨',
       title: 'ไม่มีแคปช่าติดค้าง',
-      desc: 'ระบบตรวจพบว่าบัญชีนี้ไม่มีด่านแคปช่าติดค้าง หรือผ่านการแก้ไขแล้ว สามารถเข้าเล่นเกมได้ทันที (ระบบไม่คิดเงินค่าบริการ)',
+      desc: 'ระบบตรวจพบว่าบัญชีนี้ไม่มีด่านแคปช่าติดค้าง หรือผ่านการแก้ไขแล้ว สามารถเข้าเล่นเกมได้ทันที',
       solution: 'สามารถเปิดเกม Roblox และเข้าเล่นได้ทันที'
     };
   }
@@ -622,10 +621,10 @@ function getAccountStatusInfo(status) {
   if (st === 'FAILED' || st === 'FAIL' || st === 'ERROR') {
     return {
       cls: 'status-FAILED',
-      text: 'แก้ไม่สำเร็จ (คืนเงินแล้ว) ❌',
+      text: 'แก้ไม่สำเร็จ ❌',
       title: 'AI ไม่สามารถแก้โจทย์ได้',
       desc: 'AI ทำการแก้โจทย์แคปช่าไม่สำเร็จ หรือระบบรักษาความปลอดภัยของ Roblox ปฏิเสธคำตอบ',
-      solution: 'ระบบคืนเงินค่าบริการให้เรียบร้อยแล้ว สามารถกดลองส่งใหม่อีกครั้ง'
+      solution: 'สามารถกดลองส่งใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบเพื่อตรวจสอบ'
     };
   }
 
@@ -635,7 +634,7 @@ function getAccountStatusInfo(status) {
     text: `${status} ❌`,
     title: `ข้อผิดพลาด: ${status}`,
     desc: 'เกิดข้อผิดพลาดในการตรวจสอบบัญชี หรือไม่ผ่านการตรวจสอบจากเซิร์ฟเวอร์',
-    solution: 'ระบบคืนเงินค่าบริการให้แล้ว กรุณาตรวจสอบความถูกต้องของบัญชี'
+    solution: 'กรุณาตรวจสอบความถูกต้องของบัญชี และลองใหม่อีกครั้ง'
   };
 }
 
