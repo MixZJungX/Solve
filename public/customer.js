@@ -145,13 +145,13 @@ function startFakeProgressBar() {
   }, 450);
 }
 
-function completeFakeProgressBar() {
+function completeFakeProgressBar(job = null) {
   if (progressTimer) clearInterval(progressTimer);
   currentProgress = 100;
-  updateProgressBarUI(100, true);
+  updateProgressBarUI(100, true, job);
 }
 
-function updateProgressBarUI(pct, isFinished = false) {
+function updateProgressBarUI(pct, isFinished = false, job = null) {
   const rounded = Math.min(100, Math.floor(pct));
   const bar = document.getElementById('custProgressBar');
   const percentEl = document.getElementById('custProgressPercent');
@@ -159,19 +159,32 @@ function updateProgressBarUI(pct, isFinished = false) {
   const hintEl = document.getElementById('custProgressHint');
   const dot = document.getElementById('custProgressDot');
 
+  const sCount = job?.success_count ?? 0;
+  const fCount = job?.fail_count ?? 0;
+  const skCount = job?.skip_count ?? 0;
+
+  const isAllFailed = isFinished && fCount > 0 && sCount === 0 && skCount === 0;
+  const isAllSkipped = isFinished && skCount > 0 && sCount === 0 && fCount === 0;
+  const isPartial = isFinished && sCount > 0 && fCount > 0;
+
   if (bar) {
     bar.style.width = `${rounded}%`;
+    bar.classList.remove('completed', 'failed', 'skipped', 'partial');
     if (isFinished) {
-      bar.classList.add('completed');
-    } else {
-      bar.classList.remove('completed');
+      if (isAllFailed) bar.classList.add('failed');
+      else if (isAllSkipped) bar.classList.add('skipped');
+      else if (isPartial) bar.classList.add('partial');
+      else bar.classList.add('completed');
     }
   }
 
   if (percentEl) {
     percentEl.textContent = `${rounded}%`;
     if (isFinished) {
-      percentEl.style.color = 'var(--green)';
+      if (isAllFailed) percentEl.style.color = 'var(--red)';
+      else if (isAllSkipped) percentEl.style.color = '#2dd4bf';
+      else if (isPartial) percentEl.style.color = 'var(--yellow)';
+      else percentEl.style.color = 'var(--green)';
     } else {
       percentEl.style.color = 'var(--lemon)';
     }
@@ -186,13 +199,29 @@ function updateProgressBarUI(pct, isFinished = false) {
   }
 
   if (stageEl) {
-    stageEl.textContent = isFinished ? '🎉 ดำเนินการเสร็จสิ้นเรียบร้อยแล้ว!' : matchedStage.text;
+    if (isFinished) {
+      if (isAllFailed) stageEl.textContent = '❌ แก้แคปช่าไม่สำเร็จ (พบข้อผิดพลาดที่ตัวไอดี)';
+      else if (isAllSkipped) stageEl.textContent = '✨ ตรวจสอบเสร็จสิ้น (ไม่พบด่านแคปช่า)';
+      else if (isPartial) stageEl.textContent = `⚠️ ดำเนินการเสร็จบางส่วน (${sCount} ผ่าน / ${fCount} ไม่ผ่าน)`;
+      else stageEl.textContent = '🎉 ดำเนินการเสร็จสิ้นเรียบร้อยแล้ว!';
+    } else {
+      stageEl.textContent = matchedStage.text;
+    }
   }
+
   if (hintEl) {
-    hintEl.textContent = isFinished ? 'สำเร็จ 100%! บัญชีพร้อมเข้าเล่นเกมได้ทันที' : matchedStage.hint;
+    if (isFinished) {
+      if (isAllFailed) hintEl.innerHTML = '<span style="color:#f87171;">⚠️ ไม่สามารถเข้าเกมได้ กรุณาดูสาเหตุที่ตารางด้านล่าง (ระบบคืนเงินแล้ว)</span>';
+      else if (isAllSkipped) hintEl.innerHTML = '<span style="color:#2dd4bf;">ไอดีนี้ไม่มีแคปช่า หรือผ่านการแก้ไขแล้ว สามารถเข้าเล่นเกมได้ทันที (ไม่คิดเงิน)</span>';
+      else if (isPartial) hintEl.innerHTML = '<span style="color:#fbbf24;">ไอดีที่ผ่านสามารถเข้าเกมได้ ส่วนไอดีที่ไม่ผ่านกรุณาดูสาเหตุในตารางด้านล่าง</span>';
+      else hintEl.innerHTML = '<span style="color:var(--green);">สำเร็จ 100%! บัญชีพร้อมเข้าเล่นเกมได้ทันที</span>';
+    } else {
+      hintEl.textContent = matchedStage.hint;
+    }
   }
+
   if (dot && isFinished) {
-    dot.className = 'pulse-dot completed';
+    dot.className = isAllFailed ? 'pulse-dot failed' : 'pulse-dot completed';
   }
 }
 
@@ -293,13 +322,32 @@ async function pollJobStatus() {
       if (job.status === 'COMPLETED' || job.status === 'FAILED') {
         clearInterval(pollTimer);
         pollTimer = null;
-        completeFakeProgressBar();
+        completeFakeProgressBar(job);
         const finishEl = document.getElementById('custFinishMsg');
         finishEl.style.display = 'block';
 
-        const isAllSkipped = job.accounts_detail && job.accounts_detail.length > 0 && job.accounts_detail.every(a => a.status === 'SKIP');
+        const sCount = job.success_count ?? 0;
+        const fCount = job.fail_count ?? 0;
+        const skCount = job.skip_count ?? 0;
 
-        if (isAllSkipped) {
+        const isAllFailed = fCount > 0 && sCount === 0 && skCount === 0;
+        const isAllSkipped = skCount > 0 && sCount === 0 && fCount === 0;
+        const isPartial = sCount > 0 && fCount > 0;
+
+        if (isAllFailed) {
+          finishEl.style.background = 'rgba(239, 68, 68, 0.12)';
+          finishEl.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+          finishEl.style.color = '#f87171';
+          finishEl.innerHTML = `
+            <div style="font-weight:700;font-size:14px;margin-bottom:6px;color:#f87171;">❌ การแก้แคปช่าไม่สำเร็จ (ไม่สามารถเข้าเกมได้)</div>
+            <div style="font-size:12px;opacity:0.95;line-height:1.6;color:#fca5a5;">
+              ระบบตรวจพบว่าบัญชีนี้ไม่สามารถเข้าเล่นได้ เนื่องจากปัญหาของตัวบัญชี เช่น <b>Cookie หมดอายุ / ลูกค้าไปเปลี่ยนรหัสผ่าน Roblox เอง</b> หรือ <b>ติดสแกนหน้า</b><br>
+              👉 กรุณาดูสถานะและคำแนะนำในตารางด้านบน (ระบบคืนเงินค่าบริการให้เรียบร้อยแล้ว)
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="margin-top:12px;font-size:12px;cursor:pointer;">🔄 ตรวจสอบไอดีอื่น / ลองใหม่อีกครั้ง</button>
+          `;
+          showToast('แก้แคปช่าไม่สำเร็จ กรุณาดูสาเหตุที่ตารางด้านบน', 'error');
+        } else if (isAllSkipped) {
           finishEl.style.background = 'rgba(20, 184, 166, 0.12)';
           finishEl.style.borderColor = 'rgba(45, 212, 191, 0.4)';
           finishEl.style.color = '#2dd4bf';
@@ -309,7 +357,17 @@ async function pollJobStatus() {
             <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="margin-top:10px;font-size:12px;cursor:pointer;">✨ ตรวจสอบไอดีอื่น / เริ่มรายการใหม่</button>
           `;
           showToast('บัญชีนี้ไม่มีแคปช่า พร้อมเข้าเล่นได้ทันที (ไม่คิดเงิน)', 'success');
-        } else if (job.status === 'COMPLETED') {
+        } else if (isPartial) {
+          finishEl.style.background = 'rgba(245, 158, 11, 0.12)';
+          finishEl.style.borderColor = 'rgba(245, 158, 11, 0.4)';
+          finishEl.style.color = '#fbbf24';
+          finishEl.innerHTML = `
+            <div style="font-weight:700;font-size:14px;margin-bottom:4px;color:#fbbf24;">⚠️ แก้แคปช่าสำเร็จบางส่วน (${sCount} ผ่าน / ${fCount} ไม่ผ่าน)</div>
+            <div style="font-size:12px;opacity:0.95;line-height:1.5;">ไอดีที่ผ่านสามารถเข้าเล่นเกมได้ทันที ส่วนไอดีที่ไม่ผ่านระบบคืนเงินค่าบริการให้แล้ว กรุณาตรวจสอบสาเหตุในตารางด้านบน</div>
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="margin-top:10px;font-size:12px;cursor:pointer;">✨ เริ่มรายการใหม่</button>
+          `;
+          showToast(`แก้สำเร็จ ${sCount} ไอดี / ไม่ผ่าน ${fCount} ไอดี`, 'warning');
+        } else if (sCount > 0) {
           finishEl.style.background = 'rgba(52, 211, 153, 0.1)';
           finishEl.style.borderColor = 'rgba(52, 211, 153, 0.3)';
           finishEl.style.color = 'var(--green)';

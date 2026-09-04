@@ -660,6 +660,26 @@ textarea {
   box-shadow: 0 0 22px rgba(52, 211, 153, 0.65) !important;
 }
 
+.progress-bar-fill.failed {
+  background: linear-gradient(90deg, #b91c1c, #ef4444, #f87171) !important;
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.65) !important;
+}
+
+.progress-bar-fill.skipped {
+  background: linear-gradient(90deg, #0f766e, #14b8a6, #2dd4bf) !important;
+  box-shadow: 0 0 22px rgba(45, 212, 191, 0.65) !important;
+}
+
+.progress-bar-fill.partial {
+  background: linear-gradient(90deg, #d97706, #f59e0b, #fbbf24) !important;
+  box-shadow: 0 0 22px rgba(245, 158, 11, 0.65) !important;
+}
+
+.pulse-dot.failed {
+  background: var(--red);
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.8);
+}
+
 @keyframes progressStripes {
   0% { background-position: 0 0; }
   100% { background-position: 32px 0; }
