@@ -1,13 +1,14 @@
 # ใช้ PHP 8.2 CLI เป็นฐาน
 FROM php:8.2-cli
 
-# ติดตั้ง dependencies ทั้งหมด: SQLite, curl, Node.js
+# ติดตั้ง dependencies ทั้งหมด: SQLite, Postgres, curl, Node.js
 RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
+    libpq-dev \
     libcurl4-openssl-dev \
     curl \
     ca-certificates \
-    && docker-php-ext-install pdo_sqlite curl \
+    && docker-php-ext-install pdo_sqlite pdo_pgsql pgsql curl \
     && rm -rf /var/lib/apt/lists/*
 
 # ติดตั้ง Node.js 20 LTS
