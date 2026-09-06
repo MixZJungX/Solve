@@ -11,9 +11,10 @@ class DB {
                 mkdir($dataDir, 0777, true);
             }
 
-            $dbPath = $dataDir . '/highspec.db';
             $dsn = 'pgsql:host=ep-odd-scene-b3mcwphv-pooler.c-4.ap-southeast-1.aws.neon.tech;port=5432;dbname=neondb;sslmode=require';
-            self::$pdo = new PDO($dsn, 'neondb_owner', 'npg_Fxload8cknX7');
+            self::$pdo = new PDO($dsn, 'neondb_owner', 'npg_Fxload8cknX7', [
+                PDO::ATTR_PERSISTENT => true
+            ]);
             self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             self::$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
