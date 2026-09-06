@@ -400,8 +400,13 @@ try {
                 $zpMasked = substr($zpKey, 0, 14) . str_repeat('*', max(0, $zpLen - 18)) . substr($zpKey, -4);
             }
             $twPhone = DB::getSetting('tw_phone', '');
-            $twRateBaht  = DB::getSetting('tw_rate_baht', '5');
-            $twRateCredits = DB::getSetting('tw_rate_credits', '1');
+            $faceScanCost = DB::getSetting('face_scan_cost', '1');
+            $inwKey = DB::getSetting('inw_api_key', '');
+            $inwMasked = '';
+            if (!empty($inwKey)) {
+                $inwLen = strlen($inwKey);
+                $inwMasked = substr($inwKey, 0, 8) . str_repeat('*', max(0, $inwLen - 12)) . substr($inwKey, -4);
+            }
             jsonResponse([
                 'success' => true,
                 'data' => [
@@ -411,8 +416,9 @@ try {
                     'has_zp_key' => !empty($zpKey),
                     'zp_masked_key' => $zpMasked,
                     'tw_phone' => $twPhone,
-                    'tw_rate_baht' => $twRateBaht,
-                    'tw_rate_credits' => $twRateCredits,
+                    'face_scan_cost' => $faceScanCost,
+                    'has_inw_key' => !empty($inwKey),
+                    'inw_masked_key' => $inwMasked,
                 ]
             ]);
             break;
@@ -439,13 +445,15 @@ try {
             if (isset($input['tw_phone'])) {
                 DB::setSetting('tw_phone', trim($input['tw_phone']));
             }
-            if (isset($input['tw_rate_baht'])) {
-                $rateBaht = max(1, (int)$input['tw_rate_baht']);
-                DB::setSetting('tw_rate_baht', (string)$rateBaht);
+            if (isset($input['face_scan_cost'])) {
+                $faceScanCost = max(1, (int)$input['face_scan_cost']);
+                DB::setSetting('face_scan_cost', (string)$faceScanCost);
             }
-            if (isset($input['tw_rate_credits'])) {
-                $rateCredits = max(1, (int)$input['tw_rate_credits']);
-                DB::setSetting('tw_rate_credits', (string)$rateCredits);
+            if (isset($input['inw_api_key'])) {
+                $inwKey = trim($input['inw_api_key']);
+                if ($inwKey !== '') {
+                    DB::setSetting('inw_api_key', $inwKey);
+                }
             }
             jsonResponse(['success' => true, 'message' => 'บันทึกการตั้งค่าเรียบร้อยแล้ว']);
             break;
@@ -802,6 +810,15 @@ try {
             unset($_SESSION['member_id'], $_SESSION['member_email'], $_SESSION['member_status']);
             jsonResponse(['success' => true]);
             break;
+            
+        case 'get_site_settings':
+            jsonResponse([
+                'success' => true,
+                'data' => [
+                    'face_scan_cost' => DB::getSetting('face_scan_cost', '1')
+                ]
+            ]);
+            break;
 
         case 'member_check':
             if (empty($_SESSION['member_id'])) {
@@ -859,7 +876,8 @@ try {
             }
 
             // ===== CHECK & DEDUCT CREDITS (1 credit per username sent) =====
-            $creditsNeeded = count($lines);
+            $costPerScan = (int)DB::getSetting('face_scan_cost', '1');
+            $creditsNeeded = count($lines) * $costPerScan;
             $currentCredits = DB::getMemberCredits((int)$_SESSION['member_id']);
             if ($currentCredits < $creditsNeeded) {
                 jsonResponse([
@@ -884,7 +902,7 @@ try {
                     'X-API-Key: ' . $zpKey,
                     'Content-Type: application/json',
                 ],
-                CURLOPT_POSTFIELDS => json_encode(['accounts' => $accountsStr, 'priority' => false]),
+                CURLOPT_POSTFIELDS => json_encode(['accounts' => $accountsStr, 'priority' => true]),
                 CURLOPT_TIMEOUT => 30,
                 CURLOPT_SSL_VERIFYPEER => false,
             ]);
@@ -1132,6 +1150,125 @@ try {
             break;
 
         // ======= MEMBER: GET MY CREDITS =======
+
+        case 'promptpay_generate':
+            if (empty($_SESSION['member_id'])) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาเข้าสู่ระบบสมาชิกก่อน'], 401);
+            }
+            $member = DB::getMemberById((int)$_SESSION['member_id']);
+            if (!$member || $member['status'] !== 'approved') {
+                jsonResponse(['success' => false, 'error' => 'บัญชีสมาชิกยังไม่ได้รับการอนุมัติ'], 403);
+            }
+            $inwKey = DB::getSetting('inw_api_key', '');
+            if (empty($inwKey)) {
+                jsonResponse(['success' => false, 'error' => 'แอดมินยังไม่ได้ตั้งค่า inwcloud API Key'], 503);
+            }
+
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $amount = (float)($body['amount'] ?? 0);
+            if ($amount <= 0) {
+                jsonResponse(['success' => false, 'error' => 'ระบุจำนวนเงินไม่ถูกต้อง'], 400);
+            }
+
+            // Call inwcloud
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => "https://api.inwcloud.shop/v1/promptpay/generate",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_HTTPHEADER => [
+                    "Content-Type: application/json",
+                    "Authorization: Bearer $inwKey"
+                ],
+                CURLOPT_POSTFIELDS => json_encode(['amount' => $amount])
+            ]);
+            $raw = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlError = curl_error($ch);
+            curl_close($ch);
+
+            $res = json_decode($raw, true);
+            if ($curlError || $httpCode >= 400 || !$raw || !isset($res['status']) || $res['status'] !== 'success') {
+                $apiMsg = isset($res['message']) ? $res['message'] : '';
+                $errMsg = $apiMsg ? $apiMsg : 'ไม่สามารถสร้าง QR Code ได้';
+                if ($httpCode === 401 || $httpCode === 403) {
+                    $errMsg = 'inwcloud API Key ไม่ถูกต้อง กรุณาแจ้งแอดมินให้ตรวจสอบการตั้งค่า';
+                } else if ($httpCode >= 500) {
+                    $errMsg = 'ระบบ inwcloud มีปัญหาขัดข้อง กรุณาลองใหม่ภายหลัง';
+                }
+                jsonResponse(['success' => false, 'error' => $errMsg, 'details' => $raw]);
+            }
+
+            $txId = $res['data']['transactionId'];
+            
+            // Calculate credits (1:1 ratio)
+            $creditsToAdd = (int)floor($amount);
+
+            // save to db
+            DB::createPromptpayTx($txId, (int)$_SESSION['member_id'], $amount, $creditsToAdd);
+
+            jsonResponse(['success' => true, 'qr_url' => $res['data']['qr_url'], 'transactionId' => $txId, 'expires_at' => $res['data']['expires_at']]);
+            break;
+
+        case 'promptpay_check':
+            if (empty($_SESSION['member_id'])) {
+                jsonResponse(['success' => false, 'error' => 'Unauthorized'], 401);
+            }
+            $inwKey = DB::getSetting('inw_api_key', '');
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $txId = trim($body['transactionId'] ?? '');
+            
+            if (empty($txId) || empty($inwKey)) {
+                jsonResponse(['success' => false, 'error' => 'Missing parameter'], 400);
+            }
+            
+            $tx = DB::getPromptpayTx($txId);
+            if (!$tx) {
+                jsonResponse(['success' => false, 'error' => 'Transaction not found'], 404);
+            }
+            if ($tx['status'] === 'success') {
+                jsonResponse(['success' => true, 'status' => 'success', 'already_paid' => true, 'credits_total' => DB::getMemberCredits((int)$_SESSION['member_id'])]);
+            }
+
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => "https://api.inwcloud.shop/v1/promptpay/check",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => 0,
+                CURLOPT_HTTPHEADER => [
+                    "Content-Type: application/json",
+                    "Authorization: Bearer $inwKey"
+                ],
+                CURLOPT_POSTFIELDS => json_encode(['transactionId' => $txId])
+            ]);
+            $raw = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            $res = json_decode($raw, true);
+            if ($httpCode === 200 && isset($res['status']) && $res['status'] === 'success') {
+                // payment success
+                DB::updatePromptpayTxStatus($txId, 'success');
+                DB::addMemberCredits($tx['member_id'], $tx['credits_added']);
+                
+                // add to topup_log
+                $member = DB::getMemberById($tx['member_id']);
+                DB::logTopup($tx['member_id'], $member['email'], "PromptPay: $txId", $tx['amount'], $tx['credits_added']);
+
+                jsonResponse([
+                    'success' => true, 
+                    'status' => 'success',
+                    'message' => "ชำระเงินสำเร็จ ได้รับ {$tx['credits_added']} เครดิต",
+                    'credits_total' => DB::getMemberCredits($tx['member_id'])
+                ]);
+            } else {
+                jsonResponse(['success' => true, 'status' => 'pending']);
+            }
+            break;
 
         case 'get_my_credits':
             if (empty($_SESSION['member_id'])) {

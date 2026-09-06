@@ -111,6 +111,8 @@
       color: var(--lemon);
       box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
+    .switch-tab.active { background: #3a3f58; color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
     .service-tab-btn:hover:not(.active) {
       color: #fff;
       background: rgba(255,255,255,0.05);
@@ -416,7 +418,7 @@
           </div>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
             <div class="credits-badge" id="memberCreditsBadge">
-              🎟️ <span id="memberCreditsDisplay">0</span> ครั้ง
+              🎟️ <span id="memberCreditsDisplay">0</span> เครดิต
             </div>
             <button class="btn btn-secondary btn-sm" id="btnMemberLogout3">🚪 ออก</button>
           </div>
@@ -465,19 +467,10 @@
                 </div>
               </div>
 
-              <div id="faceLogWrapper" style="display:none;">
-                <div class="table-wrapper face-log-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Username</th>
-                        <th>ข้อความ</th>
-                        <th style="text-align:right;">สถานะ</th>
-                      </tr>
-                    </thead>
-                    <tbody id="faceLogTable"></tbody>
-                  </table>
-                </div>
+              <div id="faceFakeLoading" style="display:none; text-align:center; padding: 30px 20px; background:rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius:12px; margin-bottom:16px;">
+                <div style="width: 40px; height: 40px; border: 3px solid rgba(167,139,250,0.2); border-top-color: #a78bfa; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 15px auto;"></div>
+                <h3 style="color:#a78bfa; margin-bottom:5px; font-size:16px;">กำลังดำเนินการปลดล็อค...</h3>
+                <p style="color:var(--text-muted); font-size:13px; margin:0;">กรุณารอสักครู่ ระบบกำลังทำงานอย่างเต็มที่ 🚀</p>
               </div>
 
               <div id="faceFinishMsg" style="display:none;margin-top:14px;padding:12px;border-radius:8px;text-align:center;font-size:13px;font-weight:600;"></div>
@@ -497,7 +490,7 @@
                 </label>
                 <textarea id="faceUsernames" rows="5" placeholder="ใส่ชื่อตัวละครที่ติด Face Lock เช่น:&#10;Crullshoup5524&#10;Malitatlas756&#10;(สามารถใส่หลายชื่อได้โดยเว้นบรรทัด)" required></textarea>
                 <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">
-                  ℹ️ ระบบจะดึง Cookie อัตโนมัติจากฐานข้อมูลร้านค้า | 1 ชื่อ = 1 เครดิต
+                  ℹ️ ระบบจะดึง Cookie อัตโนมัติจากฐานข้อมูลร้านค้า | ค่าบริการ <strong id="faceScanCostDisplay">1</strong> เครดิต / 1 ไอดี
                 </div>
               </div>
               <button type="submit" class="btn btn-primary" id="btnFaceSubmit" style="width:100%;font-size:16px;padding:14px;margin-top:8px;background:linear-gradient(135deg,#7c3aed,#a78bfa);">
@@ -517,12 +510,17 @@
             <div style="text-align:center;padding:20px 0 16px;">
               <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">เครดิตคงเหลือ</div>
               <div style="font-size:48px;font-weight:800;color:#a78bfa;line-height:1;" id="topupCreditsDisplay">0</div>
-              <div style="font-size:13px;color:var(--text-muted);margin-top:6px;">ครั้งสแกน</div>
             </div>
 
             <!-- Rate Info -->
             <div class="topup-rate-info" id="topupRateInfo">
-              💡 อัตราแลกเปลี่ยน: ซอง <strong id="topupRateDisplay">1 บาท = 1 ครั้ง</strong>
+              💡 อัตราแลกเปลี่ยน: <strong>1 บาท = 1 เครดิต</strong>
+            </div>
+
+            <!-- Method Tabs -->
+            <div style="display:flex; gap:8px; margin-bottom: 20px;">
+              <button type="button" class="btn btn-primary" id="btnMethodTw" onclick="switchTopupMethod('tw')" style="flex:1;font-size:13px;padding:8px;background:linear-gradient(135deg,#d97706,#f59e0b);">🧧 ซอง TrueWallet</button>
+              <button type="button" class="btn btn-secondary" id="btnMethodQr" onclick="switchTopupMethod('qr')" style="flex:1;font-size:13px;padding:8px;">📱 สแกน QR พร้อมเพย์</button>
             </div>
 
             <!-- Voucher Form -->
@@ -541,9 +539,36 @@
               <button type="submit" class="btn btn-primary" id="btnTopupSubmit"
                 style="width:100%;font-size:16px;padding:14px;margin-top:8px;background:linear-gradient(135deg,#d97706,#f59e0b);">
                 <span>💳</span>
-                <span>เติมเครดิตจากซอง TrueWallet</span>
+                <span>เติมเครดิตด้วยซอง</span>
               </button>
             </form>
+
+            <!-- QR PromptPay Form -->
+            <form id="formTopupQr" style="display:none;">
+              <div class="form-group">
+                <label class="form-label">💸 จำนวนเงินที่ต้องการเติม (บาท):</label>
+                <div class="voucher-input-wrap">
+                  <input type="number" id="qrAmount" min="1" placeholder="ระบุจำนวนเงิน (ขั้นต่ำ 1 บาท)" required />
+                </div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:8px;">
+                  ✅ รองรับทุกแอปธนาคาร และ TrueMoney Wallet
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary" id="btnQrGenerate"
+                style="width:100%;font-size:16px;padding:14px;margin-top:8px;background:linear-gradient(135deg,#0284c7,#38bdf8);">
+                <span>📱</span>
+                <span>สร้าง QR Code</span>
+              </button>
+            </form>
+
+            <div id="qrDisplayArea" style="display:none; text-align:center; margin-top:20px;">
+              <div style="background:#fff; padding:16px; border-radius:12px; display:inline-block; margin-bottom:12px;">
+                <img id="qrImage" src="" alt="QR Code" style="width:200px;height:200px;display:block;" />
+              </div>
+              <div style="font-size:14px; color:#38bdf8; font-weight:bold; margin-bottom: 8px;">สแกนเพื่อจ่ายเงิน <span id="qrAmountDisplay"></span> บาท</div>
+              <div style="font-size:12px; color:var(--text-muted);">ระบบจะตรวจสอบยอดเงินอัตโนมัติ (รอประมาณ 5-10 วินาที)</div>
+              <div id="qrLoading" style="margin-top:12px; font-size:13px; color:#a78bfa;">⏳ กำลังรอการชำระเงิน...</div>
+            </div>
 
             <!-- Topup Result -->
             <div id="topupResultMsg" style="display:none;margin-top:16px;padding:14px;border-radius:10px;text-align:center;font-size:14px;font-weight:600;"></div>
@@ -622,6 +647,6 @@
     </div>
   </div>
 
-  <script src="customer.js?v=20260905_3"></script>
+  <script src="customer.js?v=20260906_3"></script>
 </body>
 </html>

@@ -155,13 +155,19 @@ async function loadAdminSettings() {
       if (twPhoneEl && cfg.tw_phone !== undefined) {
         twPhoneEl.value = cfg.tw_phone;
       }
-      const twRateBahtEl = document.getElementById('settingTwRateBaht');
-      if (twRateBahtEl && cfg.tw_rate_baht !== undefined) {
-        twRateBahtEl.value = cfg.tw_rate_baht;
+      const faceCostEl = document.getElementById('settingFaceScanCost');
+      if (faceCostEl && cfg.face_scan_cost !== undefined) {
+        faceCostEl.value = cfg.face_scan_cost;
       }
-      const twRateCreditsEl = document.getElementById('settingTwRateCredits');
-      if (twRateCreditsEl && cfg.tw_rate_credits !== undefined) {
-        twRateCreditsEl.value = cfg.tw_rate_credits;
+      const inwKeyEl = document.getElementById('settingInwKey');
+      if (inwKeyEl) {
+        const inwMaskEl = document.getElementById('adminMaskedInwKey');
+        if (cfg.has_inw_key) {
+          inwKeyEl.placeholder = '•••••••••••• (ตั้งค่าแล้ว)';
+          if (inwMaskEl) inwMaskEl.textContent = `คีย์ปัจจุบัน: ${cfg.inw_masked_key}`;
+        } else {
+          if (inwMaskEl) inwMaskEl.textContent = 'ยังไม่ได้ใส่ inwcloud API Key';
+        }
       }
 
       // Queue mode radio
@@ -195,15 +201,15 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
   const adminPass = document.getElementById('settingAdminPass').value.trim();
   const zpKey = document.getElementById('settingZpKey')?.value.trim() || '';
   const twPhone = document.getElementById('settingTwPhone')?.value.trim();
-  const twRateBaht = document.getElementById('settingTwRateBaht')?.value.trim();
-  const twRateCredits = document.getElementById('settingTwRateCredits')?.value.trim();
+  const faceScanCost = document.getElementById('settingFaceScanCost')?.value.trim();
+  const inwKey = document.getElementById('settingInwKey')?.value.trim();
 
   const payload = { queue_mode: queueMode };
   if (apiKey) payload.api_key = apiKey;
   if (adminPass) payload.admin_password = adminPass;
   if (twPhone !== undefined) payload.tw_phone = twPhone;
-  if (twRateBaht !== undefined) payload.tw_rate_baht = twRateBaht;
-  if (twRateCredits !== undefined) payload.tw_rate_credits = twRateCredits;
+  if (faceScanCost !== undefined) payload.face_scan_cost = faceScanCost;
+  if (inwKey) payload.inw_api_key = inwKey;
 
   const { ok, data } = await apiCall('/api.php?action=save_settings', 'POST', payload);
   if (ok && data.success) {
@@ -573,18 +579,18 @@ async function loadAdminMembers() {
       const statusColors = {
         approved: { bg: 'rgba(52,211,153,0.15)', color: '#34d399', label: '✅ อนุมัติแล้ว' },
         pending:  { bg: 'rgba(250,204,21,0.15)',  color: '#facc15', label: '⏳ รอการอนุมัติ' },
-        rejected: { bg: 'rgba(239,68,68,0.15)',   color: '#ef4444', label: '❌ ปฏิเสธ' },
+        rejected: { bg: 'rgba(239,68,68,0.15)',   color: '#ef4444', label: '❌ บล็อก' },
       };
       const sc = statusColors[m.status] || statusColors.pending;
       const date = m.created_at ? m.created_at.replace('T', ' ').slice(0, 16) : '-';
 
-      const approveBtn = m.status !== 'approved'
-        ? `<button class="btn btn-success btn-sm" onclick="adminMemberAction('approve', ${m.id})" style="font-size:11px;">✅</button>`
-        : '';
-      const rejectBtn = m.status !== 'rejected'
-        ? `<button class="btn btn-secondary btn-sm" onclick="adminMemberAction('reject', ${m.id})" style="font-size:11px;background:#7f1d1d;border-color:#991b1b;">❌</button>`
-        : '';
-      const deleteBtn = `<button class="btn btn-danger btn-sm" onclick="adminMemberAction('delete', ${m.id})" style="font-size:11px;">🗑️</button>`;
+      // Toggle approve button — always show, highlight if currently approved
+      const approveBtn = `<button class="btn btn-sm" onclick="adminMemberAction('approve', ${m.id})"
+        style="font-size:11px;${m.status === 'approved' ? 'background:#065f46;border-color:#059669;' : 'background:rgba(52,211,153,0.15);border-color:#34d399;'}" title="อนุมัติ">✅</button>`;
+      // Toggle block button — always show, highlight if currently rejected
+      const rejectBtn = `<button class="btn btn-sm" onclick="adminMemberAction('reject', ${m.id})"
+        style="font-size:11px;${m.status === 'rejected' ? 'background:#7f1d1d;border-color:#991b1b;' : 'background:rgba(239,68,68,0.1);border-color:#ef4444;'}" title="บล็อก">🚫</button>`;
+      const deleteBtn = `<button class="btn btn-danger btn-sm" onclick="adminMemberAction('delete', ${m.id})" style="font-size:11px;" title="ลบ">🗑️</button>`;
 
       return `<tr>
         <td style="color:var(--text-dim);font-size:12px;">${m.id}</td>

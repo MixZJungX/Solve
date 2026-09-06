@@ -12,8 +12,7 @@ class DB {
             }
 
             $dbPath = $dataDir . '/highspec.db';
-            $dsn = 'pgsql:host=ep-odd-scene-b3mcwphv-pooler.c-4.ap-southeast-1.aws.neon.tech;port=5432;dbname=neondb;sslmode=require';
-            self::$pdo = new PDO($dsn, 'neondb_owner', 'npg_Fxload8cknX7');
+            self::$pdo = new PDO('sqlite:' . $dbPath);
             self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             self::$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
@@ -32,22 +31,22 @@ class DB {
         )");
 
         // Set defaults if not exist
-        $pdo->exec("INSERT INTO settings (key, value) VALUES ('queue_mode', 'normal') ON CONFLICT (key) DO NOTHING");
-        $pdo->exec("INSERT INTO settings (key, value) VALUES ('admin_password', 'admin1234') ON CONFLICT (key) DO NOTHING");
-        $pdo->exec("INSERT INTO settings (key, value) VALUES ('zp_api_key', '') ON CONFLICT (key) DO NOTHING");
-        $pdo->exec("INSERT INTO settings (key, value) VALUES ('tw_phone', '') ON CONFLICT (key) DO NOTHING");
-        $pdo->exec("INSERT INTO settings (key, value) VALUES ('face_scan_cost', '1') ON CONFLICT (key) DO NOTHING");
-        $pdo->exec("INSERT INTO settings (key, value) VALUES ('inw_api_key', '') ON CONFLICT (key) DO NOTHING");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('queue_mode', 'normal')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('admin_password', 'admin1234')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('zp_api_key', '')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('tw_phone', '')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('face_scan_cost', '1')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('inw_api_key', '')");
 
         // Members table (for Face Unlock access control)
         $pdo->exec("CREATE TABLE IF NOT EXISTS members (
-            id SERIAL PRIMARY KEY,
-            email TEXT UNIQUE NOT NULL ,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL COLLATE NOCASE,
             password_hash TEXT NOT NULL,
             status TEXT DEFAULT 'pending',
             credits INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
         // Add credits column to existing members table if it doesn't exist
@@ -55,13 +54,13 @@ class DB {
 
         // Topup log table
         $pdo->exec("CREATE TABLE IF NOT EXISTS topup_log (
-            id SERIAL PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             member_id INTEGER NOT NULL,
             email TEXT NOT NULL,
             link TEXT NOT NULL,
             amount_thb REAL NOT NULL,
             credits_added INTEGER NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
         // PromptPay transaction table (to prevent double crediting)
@@ -71,13 +70,13 @@ class DB {
             amount REAL NOT NULL,
             credits_added INTEGER NOT NULL,
             status TEXT DEFAULT 'pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
         // Accounts table
         $pdo->exec("CREATE TABLE IF NOT EXISTS accounts (
-            id SERIAL PRIMARY KEY,
-            username TEXT UNIQUE NOT NULL ,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL COLLATE NOCASE,
             password TEXT DEFAULT '',
             cookie TEXT NOT NULL,
             status TEXT DEFAULT 'ACTIVE',
@@ -85,7 +84,7 @@ class DB {
             last_job_id TEXT DEFAULT '',
             last_status TEXT DEFAULT '',
             last_used_at DATETIME DEFAULT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
         // Jobs table
@@ -104,8 +103,8 @@ class DB {
             accounts_json TEXT DEFAULT '[]',
             accounts_detail_json TEXT DEFAULT '[]',
             raw_response TEXT DEFAULT '',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
     }
 
@@ -122,8 +121,7 @@ class DB {
     }
 
     public static function getAccount(string $username): ?array {
-        $username = strtolower($username);
-        $stmt = self::get()->prepare("SELECT * FROM accounts WHERE LOWER(username) = LOWER(?)");
+        $stmt = self::get()->prepare("SELECT * FROM accounts WHERE username = ? COLLATE NOCASE");
         $stmt->execute([trim($username)]);
         $row = $stmt->fetch();
         return $row ?: null;
@@ -132,8 +130,8 @@ class DB {
     public static function getAccountsByUsernames(array $usernames): array {
         if (empty($usernames)) return [];
         $placeholders = implode(',', array_fill(0, count($usernames), '?'));
-        $cleaned = array_map('strtolower', array_map('trim', $usernames));
-        $stmt = self::get()->prepare("SELECT * FROM accounts WHERE LOWER(username) IN ($placeholders)");
+        $cleaned = array_map('trim', $usernames);
+        $stmt = self::get()->prepare("SELECT * FROM accounts WHERE username IN ($placeholders) COLLATE NOCASE");
         $stmt->execute($cleaned);
         $rows = $stmt->fetchAll();
 
@@ -146,7 +144,6 @@ class DB {
     }
 
     public static function upsertAccount(string $username, string $cookie, string $password = '', string $note = ''): bool {
-        $username = strtolower($username);
         $username = trim($username);
         $cookie = trim($cookie);
         $password = trim($password);
@@ -282,23 +279,21 @@ class DB {
     }
 
     public static function updateAccountUsage(string $username, string $jobId, string $status = ''): void {
-        $username = strtolower($username);
         $stmt = self::get()->prepare("
             UPDATE accounts
             SET last_used_at = datetime('now'),
                 last_job_id = ?,
                 last_status = CASE WHEN ? != '' THEN ? ELSE last_status END
-            WHERE LOWER(username) = LOWER(?)
+            WHERE username = ? COLLATE NOCASE
         ");
         $stmt->execute([$jobId, $status, $status, trim($username)]);
     }
 
     public static function updateAccountStatus(string $username, string $status): void {
-        $username = strtolower($username);
         $stmt = self::get()->prepare("
             UPDATE accounts
             SET last_status = ?
-            WHERE LOWER(username) = LOWER(?)
+            WHERE username = ? COLLATE NOCASE
         ");
         $stmt->execute([trim($status), trim($username)]);
     }
@@ -306,8 +301,7 @@ class DB {
     // ========== MEMBER METHODS (Face Unlock access control) ==========
 
     public static function getMemberByEmail(string $email): ?array {
-        $email = strtolower($email);
-        $stmt = self::get()->prepare("SELECT * FROM members WHERE LOWER(email) = LOWER(?)");
+        $stmt = self::get()->prepare("SELECT * FROM members WHERE email = ? COLLATE NOCASE");
         $stmt->execute([trim($email)]);
         $row = $stmt->fetch();
         return $row ?: null;
@@ -321,7 +315,6 @@ class DB {
     }
 
     public static function createMember(string $email, string $passwordHash): bool {
-        $email = strtolower($email);
         $stmt = self::get()->prepare("
             INSERT OR IGNORE INTO members (email, password_hash, status)
             VALUES (?, ?, 'approved')

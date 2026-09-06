@@ -713,17 +713,17 @@ async function loadMyCredits() {
   } catch (e) {}
 }
 
-async function loadTwRate() {
+let currentFaceCost = 1;
+
+async function loadSettings() {
   try {
-    const res = await fetch('/api.php?action=get_settings');
+    const res = await fetch('/api.php?action=get_site_settings');
     const data = await res.json();
     if (data.success && data.data) {
-      const baht = data.data.tw_rate_baht || 5;
-      const credits = data.data.tw_rate_credits || 1;
-      const rateEl = document.getElementById('topupRateDisplay');
-      if (rateEl) {
-        rateEl.textContent = `${baht} บาท = ${credits} ครั้ง`;
-      }
+      currentFaceCost = parseInt(data.data.face_scan_cost || 1);
+      const costEl = document.getElementById('faceScanCostDisplay');
+      if (costEl) costEl.textContent = currentFaceCost;
+      updateFaceCreditsNeeded();
     }
   } catch (e) {}
 }
@@ -747,7 +747,7 @@ function updateFaceUI() {
     const emailEl = document.getElementById('memberEmailDisplay');
     if (emailEl) emailEl.textContent = email || '';
     loadMyCredits();
-    loadTwRate();
+    loadSettings();
   } else if (status === 'rejected') {
     rejectedBox.style.display = 'block';
   } else {
@@ -848,6 +848,7 @@ document.getElementById('formMemberRegister')?.addEventListener('submit', async 
 // ============================================================
 // MEMBER LOGIN
 // ============================================================
+
 document.getElementById('formMemberLogin')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const email = document.getElementById('loginEmail').value.trim();
@@ -896,8 +897,9 @@ window.updateFaceCreditsNeeded = function() {
   
   if (countBadge) countBadge.textContent = count;
   if (creditsBadge) {
-    creditsBadge.textContent = count;
-    creditsBadge.style.color = count > (memberState.credits || 0) ? '#ef4444' : '#34d399';
+    const needed = count * currentFaceCost;
+    creditsBadge.textContent = needed;
+    creditsBadge.style.color = needed > (memberState.credits || 0) ? '#ef4444' : '#34d399';
   }
 };
 
@@ -997,8 +999,122 @@ document.getElementById('formTopupVoucher')?.addEventListener('submit', async (e
   }
 
   btn.disabled = false;
-  btn.innerHTML = '<span>💳</span><span>เติมเครดิตจากซอง TrueWallet</span>';
+  btn.innerHTML = '<span>💳</span><span>เติมเครดิตด้วยซอง</span>';
 });
+
+// ============================================================
+// TOPUP PROMPTPAY (QR)
+// ============================================================
+
+window.switchTopupMethod = function(method) {
+  const formTw = document.getElementById('formTopupVoucher');
+  const formQr = document.getElementById('formTopupQr');
+  const btnTw = document.getElementById('btnMethodTw');
+  const btnQr = document.getElementById('btnMethodQr');
+  const qrDisplayArea = document.getElementById('qrDisplayArea');
+  const resMsg = document.getElementById('topupResultMsg');
+  
+  resMsg.style.display = 'none';
+
+  if (method === 'tw') {
+    formTw.style.display = 'block';
+    formQr.style.display = 'none';
+    qrDisplayArea.style.display = 'none';
+    btnTw.style.background = 'linear-gradient(135deg,#d97706,#f59e0b)';
+    btnTw.classList.replace('btn-secondary', 'btn-primary');
+    btnQr.style.background = '';
+    btnQr.classList.replace('btn-primary', 'btn-secondary');
+  } else {
+    formTw.style.display = 'none';
+    formQr.style.display = 'block';
+    btnQr.style.background = 'linear-gradient(135deg,#0284c7,#38bdf8)';
+    btnQr.classList.replace('btn-secondary', 'btn-primary');
+    btnTw.style.background = '';
+    btnTw.classList.replace('btn-primary', 'btn-secondary');
+  }
+};
+
+let qrPollingInterval = null;
+
+document.getElementById('formTopupQr')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const amount = parseFloat(document.getElementById('qrAmount').value);
+  if (isNaN(amount) || amount <= 0) return;
+
+  const btn = document.getElementById('btnQrGenerate');
+  const resMsg = document.getElementById('topupResultMsg');
+  const qrDisplay = document.getElementById('qrDisplayArea');
+  const qrImg = document.getElementById('qrImage');
+  const qrAmtDisplay = document.getElementById('qrAmountDisplay');
+  const qrLoading = document.getElementById('qrLoading');
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span><span>กำลังสร้าง...</span>';
+  resMsg.style.display = 'none';
+  qrDisplay.style.display = 'none';
+
+  // Stop old polling if exists
+  if (qrPollingInterval) clearInterval(qrPollingInterval);
+
+  try {
+    const res = await fetch('/api.php?action=promptpay_generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount })
+    });
+    const data = await res.json();
+    
+    if (res.ok && data.success) {
+      qrImg.src = data.qr_url;
+      qrAmtDisplay.textContent = amount;
+      qrDisplay.style.display = 'block';
+      qrLoading.innerHTML = '⏳ กำลังรอการชำระเงิน...';
+      
+      const txId = data.transactionId;
+      
+      // Start polling
+      qrPollingInterval = setInterval(async () => {
+        try {
+          const chk = await fetch('/api.php?action=promptpay_check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transactionId: txId })
+          });
+          const chkData = await chk.json();
+          if (chkData.success && chkData.status === 'success') {
+            clearInterval(qrPollingInterval);
+            qrDisplay.style.display = 'none';
+            resMsg.style.display = 'block';
+            resMsg.style.background = 'rgba(52,211,153,0.1)';
+            resMsg.style.border = '1px solid rgba(52,211,153,0.3)';
+            resMsg.style.color = '#34d399';
+            resMsg.textContent = chkData.message || 'ชำระเงินสำเร็จ!';
+            showToast('เติมเครดิตสำเร็จ!', 'success');
+            loadMyCredits();
+            document.getElementById('qrAmount').value = '';
+          }
+        } catch(e) {}
+      }, 5000); // Check every 5 seconds
+
+    } else {
+      resMsg.style.display = 'block';
+      resMsg.style.background = 'rgba(239,68,68,0.1)';
+      resMsg.style.border = '1px solid rgba(239,68,68,0.3)';
+      resMsg.style.color = '#ef4444';
+      resMsg.textContent = data.error || 'ไม่สามารถสร้าง QR Code ได้';
+    }
+  } catch (err) {
+    resMsg.style.display = 'block';
+    resMsg.style.background = 'rgba(239,68,68,0.1)';
+    resMsg.style.border = '1px solid rgba(239,68,68,0.3)';
+    resMsg.style.color = '#ef4444';
+    resMsg.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>📱</span><span>สร้าง QR Code</span>';
+});
+
 
 
 function startFaceTracking(jobId, totalAccounts) {
@@ -1009,13 +1125,14 @@ function startFaceTracking(jobId, totalAccounts) {
   const idEl = document.getElementById('faceJobId');
   const totalEl = document.getElementById('faceTotal');
   const finishEl = document.getElementById('faceFinishMsg');
-  const logWrapper = document.getElementById('faceLogWrapper');
+
 
   if (section) section.style.display = 'block';
   if (idEl) idEl.textContent = jobId;
   if (totalEl) totalEl.textContent = totalAccounts || '?';
   if (finishEl) finishEl.style.display = 'none';
-  if (logWrapper) logWrapper.style.display = 'none';
+  const fakeLoader = document.getElementById('faceFakeLoading');
+  if (fakeLoader) fakeLoader.style.display = 'block';
 
   section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
@@ -1054,24 +1171,14 @@ function updateFaceStatusUI(job) {
   if (successEl) successEl.textContent = job.successful || 0;
   if (failedEl) failedEl.textContent = (job.failed || 0) + (job.other_failed || 0);
 
-  // Terminal logs
-  const logs = job.terminal_logs || [];
-  if (logs.length > 0 && logTable) {
-    logWrapper.style.display = 'block';
-    logTable.innerHTML = logs.map(l => {
-      const isSuccess = l.status === 'success';
-      return `<tr>
-        <td class="mono" style="font-size:12px;">${l.username || '-'}</td>
-        <td style="font-size:12px;color:var(--text-muted);">${l.message || '-'}</td>
-        <td style="text-align:right;">
-          <span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;
-            background:${isSuccess ? 'rgba(52,211,153,0.15)' : 'rgba(239,68,68,0.15)'};
-            color:${isSuccess ? '#34d399' : '#ef4444'};">
-            ${isSuccess ? '✅ สำเร็จ' : '❌ ไม่สำเร็จ'}
-          </span>
-        </td>
-      </tr>`;
-    }).join('');
+  // Fake Loading screen
+  const fakeLoader = document.getElementById('faceFakeLoading');
+  if (fakeLoader) {
+    if (status === 'processing' || status === 'pending') {
+      fakeLoader.style.display = 'block';
+    } else {
+      fakeLoader.style.display = 'none';
+    }
   }
 
   // Done
