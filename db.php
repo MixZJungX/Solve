@@ -83,7 +83,7 @@ class DB {
             note TEXT DEFAULT '',
             last_job_id TEXT DEFAULT '',
             last_status TEXT DEFAULT '',
-            last_used_at DATETIME DEFAULT NULL,
+            last_used_at TIMESTAMP DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
 
@@ -203,12 +203,12 @@ class DB {
     public static function saveJob(array $data): bool {
         $stmt = self::get()->prepare("
             INSERT INTO jobs (id, service, status, priority, note, total_accounts, total_amount, accounts_json, raw_response, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT(id) DO UPDATE SET
                 status = excluded.status,
                 total_accounts = excluded.total_accounts,
                 total_amount = excluded.total_amount,
-                updated_at = datetime('now')
+                updated_at = CURRENT_TIMESTAMP
         ");
         return $stmt->execute([
             $data['id'],
@@ -234,7 +234,7 @@ class DB {
         }
         if (empty($fields)) return false;
 
-        $fields[] = "updated_at = datetime('now')";
+        $fields[] = "updated_at = CURRENT_TIMESTAMP";
         $sql = "UPDATE jobs SET " . implode(', ', $fields) . " WHERE id = ?";
         $params[] = $id;
 
@@ -284,7 +284,7 @@ class DB {
         $username = strtolower($username);
         $stmt = self::get()->prepare("
             UPDATE accounts
-            SET last_used_at = datetime('now'),
+            SET last_used_at = CURRENT_TIMESTAMP,
                 last_job_id = ?,
                 last_status = CASE WHEN ? != '' THEN ? ELSE last_status END
             WHERE LOWER(username) = LOWER(?)
@@ -330,7 +330,7 @@ class DB {
 
     public static function updateMemberStatus(int $id, string $status): bool {
         $stmt = self::get()->prepare("
-            UPDATE members SET status = ?, updated_at = datetime('now') WHERE id = ?
+            UPDATE members SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
         ");
         return $stmt->execute([$status, $id]);
     }
@@ -354,17 +354,17 @@ class DB {
     }
 
     public static function addMemberCredits(int $id, int $amount): bool {
-        $stmt = self::get()->prepare("UPDATE members SET credits = credits + ?, updated_at = datetime('now') WHERE id = ?");
+        $stmt = self::get()->prepare("UPDATE members SET credits = credits + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
         return $stmt->execute([$amount, $id]);
     }
 
     public static function deductMemberCredits(int $id, int $amount): bool {
-        $stmt = self::get()->prepare("UPDATE members SET credits = MAX(0, credits - ?), updated_at = datetime('now') WHERE id = ?");
+        $stmt = self::get()->prepare("UPDATE members SET credits = MAX(0, credits - ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?");
         return $stmt->execute([$amount, $id]);
     }
 
     public static function setMemberCredits(int $id, int $amount): bool {
-        $stmt = self::get()->prepare("UPDATE members SET credits = ?, updated_at = datetime('now') WHERE id = ?");
+        $stmt = self::get()->prepare("UPDATE members SET credits = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?");
         return $stmt->execute([max(0, $amount), $id]);
     }
 
