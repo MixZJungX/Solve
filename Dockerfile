@@ -27,5 +27,6 @@ RUN mkdir -p /app/data && chmod -R 777 /app/data
 
 EXPOSE 10000
 
-# รัน Node.js Bridge ใน Background แล้วรัน PHP Server
+# รัน Node.js Bridge ใน Background แล้วรัน PHP Server (ตั้งค่า Workers ให้รองรับหลาย Request พร้อมกัน)
+ENV PHP_CLI_SERVER_WORKERS=10
 CMD ["sh", "-c", "node tw_bridge.mjs & php -S 0.0.0.0:${PORT:-10000} router.php"]

@@ -12,9 +12,9 @@ $sqlite->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 $sqlite->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
 echo "Connecting to Neon PostgreSQL...\n";
-$dsn = "pgsql:host=ep-odd-scene-b3mcwphv-pooler.c-4.ap-southeast-1.aws.neon.tech;port=5432;dbname=neondb;sslmode=require";
+$dsn = "pgsql:host=ep-crimson-credit-arkqmq69-pooler.c-4.us-west-2.aws.neon.tech;port=5432;dbname=neondb;sslmode=require";
 $user = "neondb_owner";
-$pass = "npg_Fxload8cknX7";
+$pass = "npg_pTE1Uzgekdw3";
 
 try {
     $pg = new PDO($dsn, $user, $pass);
