@@ -653,3 +653,455 @@ document.getElementById('btnCustRefresh')?.addEventListener('click', () => {
   showToast('กำลังรีเฟรชสถานะ...', 'info');
   pollJobStatus();
 });
+
+// ============================================================
+// SERVICE TAB SWITCHING
+// ============================================================
+function switchServiceTab(tab) {
+  document.getElementById('paneCaptcha').classList.toggle('active', tab === 'captcha');
+  document.getElementById('paneFace').classList.toggle('active', tab === 'face');
+  document.getElementById('tabBtnCaptcha').classList.toggle('active', tab === 'captcha');
+  document.getElementById('tabBtnFace').classList.toggle('active', tab === 'face');
+}
+
+// ============================================================
+// MEMBER AUTH MODAL
+// ============================================================
+function openMemberModal(tab = 'login') {
+  document.getElementById('modalMemberAuth').classList.add('active');
+  switchModalTab(tab);
+}
+
+function closeMemberModal() {
+  document.getElementById('modalMemberAuth').classList.remove('active');
+}
+
+function switchModalTab(tab) {
+  document.getElementById('modalPaneLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('modalPaneRegister').classList.toggle('active', tab === 'register');
+  document.getElementById('modalTabLogin').classList.toggle('active', tab === 'login');
+  document.getElementById('modalTabRegister').classList.toggle('active', tab === 'register');
+}
+
+// Close modal on backdrop click
+document.getElementById('modalMemberAuth')?.addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeMemberModal();
+});
+
+// ============================================================
+// MEMBER STATE MANAGEMENT
+// ============================================================
+let memberState = { loggedIn: false, status: null, email: null, credits: 0 };
+
+async function loadMyCredits() {
+  try {
+    const res = await fetch('/api.php?action=get_my_credits');
+    const data = await res.json();
+    if (data.success) {
+      memberState.credits = data.credits;
+      document.getElementById('memberCreditsDisplay').textContent = memberState.credits;
+      document.getElementById('topupCreditsDisplay').textContent = memberState.credits;
+      
+      const badge = document.getElementById('memberCreditsBadge');
+      if (memberState.credits > 0) {
+        badge.classList.remove('low');
+      } else {
+        badge.classList.add('low');
+      }
+      updateFaceCreditsNeeded();
+    }
+  } catch (e) {}
+}
+
+async function loadTwRate() {
+  try {
+    const res = await fetch('/api.php?action=get_settings');
+    const data = await res.json();
+    if (data.success && data.data) {
+      const baht = data.data.tw_rate_baht || 5;
+      const credits = data.data.tw_rate_credits || 1;
+      const rateEl = document.getElementById('topupRateDisplay');
+      if (rateEl) {
+        rateEl.textContent = `${baht} บาท = ${credits} ครั้ง`;
+      }
+    }
+  } catch (e) {}
+}
+
+function updateFaceUI() {
+  const { loggedIn, status, email } = memberState;
+  const authBox = document.getElementById('faceAuthBox');
+  const pendingBox = document.getElementById('facePendingBox');
+  const rejectedBox = document.getElementById('faceRejectedBox');
+  const mainArea = document.getElementById('faceMainArea');
+
+  authBox.style.display = 'none';
+  pendingBox.style.display = 'none';
+  rejectedBox.style.display = 'none';
+  mainArea.style.display = 'none';
+
+  if (!loggedIn) {
+    authBox.style.display = 'block';
+  } else if (status === 'approved') {
+    mainArea.style.display = 'block';
+    const emailEl = document.getElementById('memberEmailDisplay');
+    if (emailEl) emailEl.textContent = email || '';
+    loadMyCredits();
+    loadTwRate();
+  } else if (status === 'rejected') {
+    rejectedBox.style.display = 'block';
+  } else {
+    // pending
+    pendingBox.style.display = 'block';
+  }
+}
+
+// ── FACE SUB-TABS ──
+window.switchFaceSubTab = function(tabId) {
+  document.querySelectorAll('.face-subtab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.face-subpane').forEach(p => p.classList.remove('active'));
+  
+  if (tabId === 'scan') {
+    document.getElementById('faceSubBtnScan').classList.add('active');
+    document.getElementById('faceSubPaneScan').classList.add('active');
+  } else if (tabId === 'topup') {
+    document.getElementById('faceSubBtnTopup').classList.add('active');
+    document.getElementById('faceSubPaneTopup').classList.add('active');
+    loadMyCredits();
+  }
+};
+
+async function checkMemberSession() {
+  try {
+    const res = await fetch('/api.php?action=member_check');
+    const data = await res.json();
+    if (data.logged_in) {
+      memberState = { loggedIn: true, status: data.status, email: data.email };
+    } else {
+      memberState = { loggedIn: false, status: null, email: null };
+    }
+  } catch (e) {
+    memberState = { loggedIn: false, status: null, email: null };
+  }
+  updateFaceUI();
+}
+
+async function memberLogout() {
+  await fetch('/api.php?action=member_logout', { method: 'POST' });
+  memberState = { loggedIn: false, status: null, email: null };
+  updateFaceUI();
+  showToast('ออกจากระบบสมาชิกแล้ว', 'info');
+}
+
+// Logout buttons
+document.getElementById('btnMemberLogout')?.addEventListener('click', memberLogout);
+document.getElementById('btnMemberLogout2')?.addEventListener('click', memberLogout);
+document.getElementById('btnMemberLogout3')?.addEventListener('click', memberLogout);
+
+// ============================================================
+// MEMBER REGISTER
+// ============================================================
+document.getElementById('formMemberRegister')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const confirm = document.getElementById('regPasswordConfirm').value;
+
+  if (password !== confirm) return showToast('รหัสผ่านไม่ตรงกัน', 'error');
+
+  const btn = document.getElementById('btnRegisterSubmit');
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังสมัคร...';
+
+  try {
+    const res = await fetch('/api.php?action=member_register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      closeMemberModal();
+      showToast(data.message, 'success');
+      // auto login after register
+      const loginRes = await fetch('/api.php?action=member_login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const loginData = await loginRes.json();
+      if (loginData.success) {
+        memberState = { loggedIn: true, status: loginData.status, email: loginData.email };
+        updateFaceUI();
+      }
+    } else {
+      showToast(data.error || 'สมัครสมาชิกไม่สำเร็จ', 'error');
+    }
+  } catch (err) {
+    showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '📝 สมัครสมาชิก';
+});
+
+// ============================================================
+// MEMBER LOGIN
+// ============================================================
+document.getElementById('formMemberLogin')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+
+  const btn = document.getElementById('btnLoginSubmit');
+  btn.disabled = true;
+  btn.textContent = '⏳ กำลังเข้าสู่ระบบ...';
+
+  try {
+    const res = await fetch('/api.php?action=member_login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      memberState = { loggedIn: true, status: data.status, email: data.email };
+      closeMemberModal();
+      updateFaceUI();
+      showToast('เข้าสู่ระบบสำเร็จ!', 'success');
+    } else {
+      showToast(data.error || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง', 'error');
+    }
+  } catch (err) {
+    showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '🔑 เข้าสู่ระบบ';
+});
+
+// ============================================================
+// FACE UNLOCK SUBMIT & POLL
+// ============================================================
+let faceJobId = null;
+let facePollTimer = null;
+
+window.updateFaceCreditsNeeded = function() {
+  const text = document.getElementById('faceUsernames')?.value.trim() || '';
+  const lines = text ? text.split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l) : [];
+  const count = lines.length;
+  
+  const countBadge = document.getElementById('faceCountBadge');
+  const creditsBadge = document.getElementById('faceCreditsNeeded');
+  
+  if (countBadge) countBadge.textContent = count;
+  if (creditsBadge) {
+    creditsBadge.textContent = count;
+    creditsBadge.style.color = count > (memberState.credits || 0) ? '#ef4444' : '#34d399';
+  }
+};
+
+document.getElementById('faceUsernames')?.addEventListener('input', updateFaceCreditsNeeded);
+
+document.getElementById('formFaceSubmit')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = document.getElementById('faceUsernames').value.trim();
+  if (!text) return showToast('กรุณาระบุชื่อตัวละครอย่างน้อย 1 ชื่อ', 'error');
+
+  const usernames = text.split(/\r\n|\n|\r/).map(l => l.trim()).filter(l => l);
+  if (!usernames.length) return;
+
+  const btn = document.getElementById('btnFaceSubmit');
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span><span>กำลังส่งงานสแกนหน้า...</span>';
+
+  try {
+    const res = await fetch('/api.php?action=face_submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usernames })
+    });
+    const data = await res.json();
+    btn.disabled = false;
+    btn.innerHTML = '<span>😊</span><span>เริ่มสแกนหน้าทันที (Face Unlock)</span>';
+
+    if (res.ok && data.success) {
+      if (data.data.not_found && data.data.not_found.length > 0) {
+        showToast(`⚠️ ไม่พบในระบบ: ${data.data.not_found.join(', ')}`, 'error');
+      }
+      showToast('ส่งงานสแกนหน้าสำเร็จ! กำลังประมวลผล...', 'success');
+      
+      // Update credits immediately
+      if (data.data.credits_remaining !== undefined) {
+        memberState.credits = data.data.credits_remaining;
+        document.getElementById('memberCreditsDisplay').textContent = memberState.credits;
+        document.getElementById('topupCreditsDisplay').textContent = memberState.credits;
+        updateFaceCreditsNeeded();
+      }
+
+      startFaceTracking(data.data.job_id, data.data.total_accounts);
+    } else {
+      showToast(data.error || 'ส่งงานไม่สำเร็จ', 'error');
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.innerHTML = '<span>😊</span><span>เริ่มสแกนหน้าทันที (Face Unlock)</span>';
+    showToast('เกิดข้อผิดพลาด กรุณาลองใหม่', 'error');
+  }
+});
+
+// ============================================================
+// TOPUP TRUEWALLET VOUCHER
+// ============================================================
+document.getElementById('formTopupVoucher')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const link = document.getElementById('voucherLink').value.trim();
+  if (!link) return;
+
+  const btn = document.getElementById('btnTopupSubmit');
+  const resMsg = document.getElementById('topupResultMsg');
+  
+  btn.disabled = true;
+  btn.innerHTML = '<span>⏳</span><span>กำลังดำเนินการ...</span>';
+  resMsg.style.display = 'none';
+
+  try {
+    const res = await fetch('/api.php?action=topup_voucher', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ link })
+    });
+    const data = await res.json();
+    
+    resMsg.style.display = 'block';
+    if (res.ok && data.success) {
+      resMsg.style.background = 'rgba(52,211,153,0.1)';
+      resMsg.style.border = '1px solid rgba(52,211,153,0.3)';
+      resMsg.style.color = '#34d399';
+      resMsg.textContent = data.message;
+      document.getElementById('voucherLink').value = '';
+      showToast('เติมเครดิตสำเร็จ!', 'success');
+      loadMyCredits();
+    } else {
+      resMsg.style.background = 'rgba(239,68,68,0.1)';
+      resMsg.style.border = '1px solid rgba(239,68,68,0.3)';
+      resMsg.style.color = '#ef4444';
+      resMsg.textContent = data.error || 'การเติมเครดิตล้มเหลว';
+    }
+  } catch (err) {
+    resMsg.style.display = 'block';
+    resMsg.style.background = 'rgba(239,68,68,0.1)';
+    resMsg.style.border = '1px solid rgba(239,68,68,0.3)';
+    resMsg.style.color = '#ef4444';
+    resMsg.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อ กรุณาลองใหม่';
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<span>💳</span><span>เติมเครดิตจากซอง TrueWallet</span>';
+});
+
+
+function startFaceTracking(jobId, totalAccounts) {
+  faceJobId = jobId;
+  if (facePollTimer) clearInterval(facePollTimer);
+
+  const section = document.getElementById('faceJobSection');
+  const idEl = document.getElementById('faceJobId');
+  const totalEl = document.getElementById('faceTotal');
+  const finishEl = document.getElementById('faceFinishMsg');
+  const logWrapper = document.getElementById('faceLogWrapper');
+
+  if (section) section.style.display = 'block';
+  if (idEl) idEl.textContent = jobId;
+  if (totalEl) totalEl.textContent = totalAccounts || '?';
+  if (finishEl) finishEl.style.display = 'none';
+  if (logWrapper) logWrapper.style.display = 'none';
+
+  section?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  pollFaceStatus();
+  facePollTimer = setInterval(pollFaceStatus, 4000);
+}
+
+async function pollFaceStatus() {
+  if (!faceJobId) return;
+  try {
+    const res = await fetch(`/api.php?action=face_status&job_id=${encodeURIComponent(faceJobId)}`);
+    const data = await res.json();
+    if (!data.success) return;
+    updateFaceStatusUI(data.data);
+  } catch (e) { /* ignore */ }
+}
+
+function updateFaceStatusUI(job) {
+  const status = (job.status || '').toLowerCase();
+  const badgeEl = document.getElementById('faceJobStatusBadge');
+  const successEl = document.getElementById('faceSuccess');
+  const failedEl = document.getElementById('faceFailed');
+  const totalEl = document.getElementById('faceTotal');
+  const logWrapper = document.getElementById('faceLogWrapper');
+  const logTable = document.getElementById('faceLogTable');
+  const finishEl = document.getElementById('faceFinishMsg');
+
+  // Badge text
+  const statusText = { pending: '⏳ รอคิว', processing: '🔄 กำลังประมวลผล', completed: '✅ เสร็จสิ้น', failed: '❌ ล้มเหลว', cancelled: '🚫 ยกเลิก' };
+  if (badgeEl) {
+    badgeEl.textContent = statusText[status] || status.toUpperCase();
+    badgeEl.className = `job-status-badge status-${status === 'completed' ? 'COMPLETED' : status === 'processing' ? 'PROCESSING' : 'PENDING'}`;
+  }
+
+  if (totalEl && job.total_accounts) totalEl.textContent = job.total_accounts;
+  if (successEl) successEl.textContent = job.successful || 0;
+  if (failedEl) failedEl.textContent = (job.failed || 0) + (job.other_failed || 0);
+
+  // Terminal logs
+  const logs = job.terminal_logs || [];
+  if (logs.length > 0 && logTable) {
+    logWrapper.style.display = 'block';
+    logTable.innerHTML = logs.map(l => {
+      const isSuccess = l.status === 'success';
+      return `<tr>
+        <td class="mono" style="font-size:12px;">${l.username || '-'}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${l.message || '-'}</td>
+        <td style="text-align:right;">
+          <span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:700;
+            background:${isSuccess ? 'rgba(52,211,153,0.15)' : 'rgba(239,68,68,0.15)'};
+            color:${isSuccess ? '#34d399' : '#ef4444'};">
+            ${isSuccess ? '✅ สำเร็จ' : '❌ ไม่สำเร็จ'}
+          </span>
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Done
+  if (status === 'completed' || status === 'failed' || status === 'cancelled') {
+    if (facePollTimer) clearInterval(facePollTimer);
+    if (finishEl) {
+      finishEl.style.display = 'block';
+      const sCount = job.successful || 0;
+      const fCount = (job.failed || 0) + (job.other_failed || 0);
+      if (status === 'completed' && sCount > 0 && fCount === 0) {
+        finishEl.style.background = 'rgba(52,211,153,0.1)';
+        finishEl.style.border = '1px solid rgba(52,211,153,0.3)';
+        finishEl.style.color = '#34d399';
+        finishEl.innerHTML = `🎉 สแกนหน้าสำเร็จ ${sCount} ไอดี! เข้าเกมได้เลย!`;
+      } else if (fCount > 0 && sCount === 0) {
+        finishEl.style.background = 'rgba(239,68,68,0.1)';
+        finishEl.style.border = '1px solid rgba(239,68,68,0.3)';
+        finishEl.style.color = '#ef4444';
+        finishEl.innerHTML = `❌ ไม่สำเร็จ ${fCount} ไอดี — กรุณาตรวจสอบ Cookie และลองใหม่`;
+      } else {
+        finishEl.style.background = 'rgba(250,204,21,0.1)';
+        finishEl.style.border = '1px solid rgba(250,204,21,0.3)';
+        finishEl.style.color = '#facc15';
+        finishEl.innerHTML = `⚡ เสร็จสิ้น: สำเร็จ ${sCount} ไม่สำเร็จ ${fCount} ไอดี`;
+      }
+    }
+  }
+}
+
+// ============================================================
+// INIT — check member session on page load
+// ============================================================
+checkMemberSession();

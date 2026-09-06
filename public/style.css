@@ -332,6 +332,9 @@ body {
 
 input[type="text"],
 input[type="password"],
+input[type="number"],
+input[type="email"],
+input[type="url"],
 textarea,
 select {
   width: 100%;

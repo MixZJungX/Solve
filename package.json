@@ -1,0 +1,9 @@
+{
+  "name": "highspec-web",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "got": "^16.0.0",
+    "got-scraping": "^4.2.1"
+  }
+}

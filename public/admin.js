@@ -66,6 +66,8 @@ function switchAdminTab(tabId) {
   if (tabId === 'tab-accounts') loadAdminAccounts();
   if (tabId === 'tab-history') loadAdminHistory();
   if (tabId === 'tab-settings') loadAdminSettings();
+  if (tabId === 'tab-members') loadAdminMembers();
+  if (tabId === 'tab-topup') loadAdminTopup();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -139,6 +141,29 @@ async function loadAdminSettings() {
         maskEl.textContent = 'ยังไม่ได้ใส่ API Key';
       }
 
+      // ZP Key preview
+      const zpMaskEl = document.getElementById('adminMaskedZpKey');
+      if (zpMaskEl) {
+        if (cfg.has_zp_key) {
+          zpMaskEl.innerHTML = `😊 ZP Key: <b style="color:#a78bfa;">${cfg.zp_masked_key}</b>`;
+        } else {
+          zpMaskEl.textContent = 'ยังไม่ได้ใส่ ZeroPoint API Key';
+        }
+      }
+      
+      const twPhoneEl = document.getElementById('settingTwPhone');
+      if (twPhoneEl && cfg.tw_phone !== undefined) {
+        twPhoneEl.value = cfg.tw_phone;
+      }
+      const twRateBahtEl = document.getElementById('settingTwRateBaht');
+      if (twRateBahtEl && cfg.tw_rate_baht !== undefined) {
+        twRateBahtEl.value = cfg.tw_rate_baht;
+      }
+      const twRateCreditsEl = document.getElementById('settingTwRateCredits');
+      if (twRateCreditsEl && cfg.tw_rate_credits !== undefined) {
+        twRateCreditsEl.value = cfg.tw_rate_credits;
+      }
+
       // Queue mode radio
       const mode = cfg.queue_mode || 'normal';
       const radios = document.querySelectorAll('input[name="queueMode"]');
@@ -168,16 +193,35 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
   const queueMode = document.querySelector('input[name="queueMode"]:checked')?.value || 'normal';
   const apiKey = document.getElementById('settingApiKey').value.trim();
   const adminPass = document.getElementById('settingAdminPass').value.trim();
+  const zpKey = document.getElementById('settingZpKey')?.value.trim() || '';
+  const twPhone = document.getElementById('settingTwPhone')?.value.trim();
+  const twRateBaht = document.getElementById('settingTwRateBaht')?.value.trim();
+  const twRateCredits = document.getElementById('settingTwRateCredits')?.value.trim();
 
   const payload = { queue_mode: queueMode };
   if (apiKey) payload.api_key = apiKey;
   if (adminPass) payload.admin_password = adminPass;
+  if (twPhone !== undefined) payload.tw_phone = twPhone;
+  if (twRateBaht !== undefined) payload.tw_rate_baht = twRateBaht;
+  if (twRateCredits !== undefined) payload.tw_rate_credits = twRateCredits;
 
   const { ok, data } = await apiCall('/api.php?action=save_settings', 'POST', payload);
   if (ok && data.success) {
     showToast('บันทึกการตั้งค่าร้านค้าเรียบร้อยแล้ว!', 'success');
     document.getElementById('settingApiKey').value = '';
     document.getElementById('settingAdminPass').value = '';
+
+    // Save ZP Key separately if provided
+    if (zpKey) {
+      const { ok: zpOk, data: zpData } = await apiCall('/api.php?action=admin_save_zp_key', 'POST', { zp_api_key: zpKey });
+      if (zpOk && zpData.success) {
+        showToast('บันทึก ZeroPoint API Key สำเร็จ', 'success');
+        document.getElementById('settingZpKey').value = '';
+      } else {
+        showToast(zpData.error || 'บันทึก ZP Key ไม่สำเร็จ', 'error');
+      }
+    }
+
     loadAdminSettings();
     refreshAdminBalance();
   } else {
@@ -501,6 +545,162 @@ async function viewJobDetail(id) {
 document.getElementById('btnAdminReloadHistory')?.addEventListener('click', () => {
   showToast('รีเฟรชประวัติงานแล้ว', 'info');
   loadAdminHistory();
+});
+
+// ============================================================
+// MEMBER MANAGEMENT (Face Unlock Access Control)
+// ============================================================
+async function loadAdminMembers() {
+  const tbody = document.getElementById('adminMemberTableBody');
+  const countEl = document.getElementById('adminMemberCount');
+  if (!tbody) return;
+
+  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">กำลังโหลด...</td></tr>`;
+
+  try {
+    const { ok, data } = await apiCall('/api.php?action=admin_list_members');
+    if (!ok || !data.success) throw new Error(data.error || 'error');
+
+    const members = data.members || [];
+    if (countEl) countEl.textContent = members.length;
+
+    if (members.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:36px;">ยังไม่มีสมาชิก</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = members.map(m => {
+      const statusColors = {
+        approved: { bg: 'rgba(52,211,153,0.15)', color: '#34d399', label: '✅ อนุมัติแล้ว' },
+        pending:  { bg: 'rgba(250,204,21,0.15)',  color: '#facc15', label: '⏳ รอการอนุมัติ' },
+        rejected: { bg: 'rgba(239,68,68,0.15)',   color: '#ef4444', label: '❌ ปฏิเสธ' },
+      };
+      const sc = statusColors[m.status] || statusColors.pending;
+      const date = m.created_at ? m.created_at.replace('T', ' ').slice(0, 16) : '-';
+
+      const approveBtn = m.status !== 'approved'
+        ? `<button class="btn btn-success btn-sm" onclick="adminMemberAction('approve', ${m.id})" style="font-size:11px;">✅</button>`
+        : '';
+      const rejectBtn = m.status !== 'rejected'
+        ? `<button class="btn btn-secondary btn-sm" onclick="adminMemberAction('reject', ${m.id})" style="font-size:11px;background:#7f1d1d;border-color:#991b1b;">❌</button>`
+        : '';
+      const deleteBtn = `<button class="btn btn-danger btn-sm" onclick="adminMemberAction('delete', ${m.id})" style="font-size:11px;">🗑️</button>`;
+
+      return `<tr>
+        <td style="color:var(--text-dim);font-size:12px;">${m.id}</td>
+        <td style="font-size:13px;">${m.email}</td>
+        <td style="font-size:13px;font-weight:700;color:#a78bfa;cursor:pointer;" onclick="adminSetCredits(${m.id}, ${m.credits || 0}, '${m.email}')">
+          ${m.credits || 0} ✏️
+        </td>
+        <td>
+          <span style="font-size:11px;padding:3px 10px;border-radius:20px;font-weight:700;
+            background:${sc.bg};color:${sc.color};">
+            ${sc.label}
+          </span>
+        </td>
+        <td style="font-size:12px;color:var(--text-muted);">${date}</td>
+        <td style="text-align:right;">
+          <div style="display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap;">
+            ${approveBtn}
+            ${rejectBtn}
+            ${deleteBtn}
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);padding:24px;">โหลดข้อมูลสมาชิกไม่สำเร็จ</td></tr>`;
+  }
+}
+
+async function adminMemberAction(action, id) {
+  const actionMap = {
+    approve: { url: 'admin_approve_member', confirm: 'อนุมัติสมาชิกนี้?', success: 'อนุมัติสมาชิกสำเร็จ!' },
+    reject:  { url: 'admin_reject_member',  confirm: 'ปฏิเสธสมาชิกนี้?',  success: 'ปฏิเสธสมาชิกแล้ว' },
+    delete:  { url: 'admin_delete_member',  confirm: 'ลบสมาชิกนี้ออกจากระบบ?', success: 'ลบสมาชิกแล้ว' },
+  };
+  const cfg = actionMap[action];
+  if (!cfg || !confirm(cfg.confirm)) return;
+
+  try {
+    const { ok, data } = await apiCall(`/api.php?action=${cfg.url}`, 'POST', { id });
+    if (ok && data.success) {
+      showToast(cfg.success, 'success');
+      loadAdminMembers();
+    } else {
+      showToast(data.error || 'ดำเนินการไม่สำเร็จ', 'error');
+    }
+  } catch (e) {
+    showToast('เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+async function adminSetCredits(id, currentCredits, email) {
+  const val = prompt(`ตั้งค่าเครดิตสำหรับ ${email}\nเครดิตปัจจุบัน: ${currentCredits} ครั้ง\n\nใส่จำนวนเครดิตใหม่:`, currentCredits);
+  if (val === null) return;
+  const credits = parseInt(val, 10);
+  if (isNaN(credits) || credits < 0) return showToast('ข้อมูลไม่ถูกต้อง', 'error');
+
+  try {
+    const { ok, data } = await apiCall('/api.php?action=admin_set_member_credits', 'POST', { id, credits });
+    if (ok && data.success) {
+      showToast(data.message, 'success');
+      loadAdminMembers();
+    } else {
+      showToast(data.error || 'ตั้งค่าไม่สำเร็จ', 'error');
+    }
+  } catch (e) {
+    showToast('เกิดข้อผิดพลาด', 'error');
+  }
+}
+
+document.getElementById('btnAdminReloadMembers')?.addEventListener('click', () => {
+  showToast('รีเฟรชสมาชิกแล้ว', 'info');
+  loadAdminMembers();
+});
+
+// ============================================================
+// TOPUP LOG
+// ============================================================
+async function loadAdminTopup() {
+  const tbody = document.getElementById('adminTopupTableBody');
+  if (!tbody) return;
+
+  tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:24px;">กำลังโหลด...</td></tr>`;
+
+  try {
+    const { ok, data } = await apiCall('/api.php?action=admin_topup_log');
+    if (!ok || !data.success) throw new Error(data.error || 'error');
+
+    const logs = data.logs || [];
+
+    if (logs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:36px;">ยังไม่มีประวัติการเติมเครดิต</td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = logs.map(l => {
+      const date = l.created_at ? l.created_at.replace('T', ' ').slice(0, 16) : '-';
+      const linkShort = l.link && l.link.length > 30 ? l.link.substring(0,30) + '...' : l.link;
+      return `<tr>
+        <td style="color:var(--text-dim);font-size:12px;">${l.id}</td>
+        <td style="font-size:12px;color:var(--text-muted);">${date}</td>
+        <td style="font-size:13px;font-weight:600;">${l.email}</td>
+        <td style="font-size:12px;"><a href="${l.link}" target="_blank" style="color:#60a5fa;text-decoration:none;">${linkShort}</a></td>
+        <td style="font-size:13px;color:#34d399;font-weight:700;">${l.amount_thb} ฿</td>
+        <td style="font-size:13px;color:#a78bfa;font-weight:700;">+${l.credits_added} ครั้ง</td>
+      </tr>`;
+    }).join('');
+
+  } catch (e) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:var(--red);padding:24px;">โหลดข้อมูลไม่สำเร็จ</td></tr>`;
+  }
+}
+
+document.getElementById('btnAdminReloadTopup')?.addEventListener('click', () => {
+  showToast('รีเฟรชประวัติแล้ว', 'info');
+  loadAdminTopup();
 });
 
 // Init

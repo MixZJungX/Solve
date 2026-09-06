@@ -1,17 +1,30 @@
+# ใช้ PHP 8.2 CLI เป็นฐาน
 FROM php:8.2-cli
 
-# Install SQLite3 PDO extension
+# ติดตั้ง dependencies ทั้งหมด: SQLite, curl, Node.js
 RUN apt-get update && apt-get install -y \
     libsqlite3-dev \
-    && docker-php-ext-install pdo_sqlite \
+    libcurl4-openssl-dev \
+    curl \
+    ca-certificates \
+    && docker-php-ext-install pdo_sqlite curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# ติดตั้ง Node.js 20 LTS
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY . /app
 
-# Ensure data directory exists and has write permissions for SQLite
+# ติดตั้ง Node.js packages (got-scraping สำหรับ TW Bridge)
+RUN npm install
+
+# สร้างโฟลเดอร์ data สำหรับ SQLite
 RUN mkdir -p /app/data && chmod -R 777 /app/data
 
 EXPOSE 10000
 
-CMD ["sh", "-c", "php -S 0.0.0.0:${PORT:-10000} router.php"]
+# รัน Node.js Bridge ใน Background แล้วรัน PHP Server
+CMD ["sh", "-c", "node tw_bridge.mjs & php -S 0.0.0.0:${PORT:-10000} router.php"]

@@ -393,12 +393,26 @@ try {
                 $maskedKey = substr($apiKey, 0, 7) . str_repeat('*', max(0, $len - 11)) . substr($apiKey, -4);
             }
             $queueMode = DB::getSetting('queue_mode', 'normal');
+            $zpKey = DB::getSetting('zp_api_key', '');
+            $zpMasked = '';
+            if (!empty($zpKey)) {
+                $zpLen = strlen($zpKey);
+                $zpMasked = substr($zpKey, 0, 14) . str_repeat('*', max(0, $zpLen - 18)) . substr($zpKey, -4);
+            }
+            $twPhone = DB::getSetting('tw_phone', '');
+            $twRateBaht  = DB::getSetting('tw_rate_baht', '5');
+            $twRateCredits = DB::getSetting('tw_rate_credits', '1');
             jsonResponse([
                 'success' => true,
                 'data' => [
                     'has_key' => !empty($apiKey),
                     'masked_key' => $maskedKey,
-                    'queue_mode' => $queueMode // 'normal' or 'priority'
+                    'queue_mode' => $queueMode,
+                    'has_zp_key' => !empty($zpKey),
+                    'zp_masked_key' => $zpMasked,
+                    'tw_phone' => $twPhone,
+                    'tw_rate_baht' => $twRateBaht,
+                    'tw_rate_credits' => $twRateCredits,
                 ]
             ]);
             break;
@@ -421,6 +435,17 @@ try {
             }
             if (!empty($input['admin_password'])) {
                 DB::setSetting('admin_password', trim($input['admin_password']));
+            }
+            if (isset($input['tw_phone'])) {
+                DB::setSetting('tw_phone', trim($input['tw_phone']));
+            }
+            if (isset($input['tw_rate_baht'])) {
+                $rateBaht = max(1, (int)$input['tw_rate_baht']);
+                DB::setSetting('tw_rate_baht', (string)$rateBaht);
+            }
+            if (isset($input['tw_rate_credits'])) {
+                $rateCredits = max(1, (int)$input['tw_rate_credits']);
+                DB::setSetting('tw_rate_credits', (string)$rateCredits);
             }
             jsonResponse(['success' => true, 'message' => 'บันทึกการตั้งค่าเรียบร้อยแล้ว']);
             break;
@@ -734,6 +759,386 @@ try {
             } else {
                 jsonResponse(['success' => false, 'error' => 'ไม่สามารถบันทึกไฟล์ Database ได้'], 500);
             }
+            break;
+
+        // ======= MEMBER SYSTEM (Face Unlock Access Control) =======
+
+        case 'member_register':
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $email = trim($body['email'] ?? '');
+            $password = trim($body['password'] ?? '');
+
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาใส่อีเมลที่ถูกต้อง'], 400);
+            }
+            if (strlen($password) < 6) {
+                jsonResponse(['success' => false, 'error' => 'รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'], 400);
+            }
+            $existing = DB::getMemberByEmail($email);
+            if ($existing) {
+                jsonResponse(['success' => false, 'error' => 'อีเมลนี้ถูกใช้งานแล้ว'], 409);
+            }
+            $hash = password_hash($password, PASSWORD_DEFAULT);
+            DB::createMember($email, $hash);
+            jsonResponse(['success' => true, 'message' => 'สมัครสมาชิกสำเร็จ! รอแอดมินอนุมัติก่อนใช้งานระบบสแกนหน้า']);
+            break;
+
+        case 'member_login':
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $email = trim($body['email'] ?? '');
+            $password = trim($body['password'] ?? '');
+
+            $member = DB::getMemberByEmail($email);
+            if (!$member || !password_verify($password, $member['password_hash'])) {
+                jsonResponse(['success' => false, 'error' => 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'], 401);
+            }
+            $_SESSION['member_id'] = $member['id'];
+            $_SESSION['member_email'] = $member['email'];
+            $_SESSION['member_status'] = $member['status'];
+            jsonResponse(['success' => true, 'status' => $member['status'], 'email' => $member['email']]);
+            break;
+
+        case 'member_logout':
+            unset($_SESSION['member_id'], $_SESSION['member_email'], $_SESSION['member_status']);
+            jsonResponse(['success' => true]);
+            break;
+
+        case 'member_check':
+            if (empty($_SESSION['member_id'])) {
+                jsonResponse(['success' => false, 'logged_in' => false]);
+            }
+            // Refresh status from DB
+            $member = DB::getMemberById((int)$_SESSION['member_id']);
+            if (!$member) {
+                unset($_SESSION['member_id'], $_SESSION['member_email'], $_SESSION['member_status']);
+                jsonResponse(['success' => false, 'logged_in' => false]);
+            }
+            $_SESSION['member_status'] = $member['status'];
+            jsonResponse(['success' => true, 'logged_in' => true, 'status' => $member['status'], 'email' => $member['email']]);
+            break;
+
+        // ======= FACE UNLOCK SUBMIT & STATUS =======
+
+        case 'face_submit':
+            if (empty($_SESSION['member_id'])) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาเข้าสู่ระบบสมาชิกก่อน'], 401);
+            }
+            $member = DB::getMemberById((int)$_SESSION['member_id']);
+            if (!$member || $member['status'] !== 'approved') {
+                jsonResponse(['success' => false, 'error' => 'บัญชีสมาชิกยังไม่ได้รับการอนุมัติ'], 403);
+            }
+
+            $zpKey = DB::getSetting('zp_api_key', '');
+            if (empty($zpKey)) {
+                jsonResponse(['success' => false, 'error' => 'ยังไม่ได้ตั้งค่า ZeroPoint API Key กรุณาติดต่อแอดมิน'], 503);
+            }
+
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $usernames = array_filter(array_map('trim', (array)($body['usernames'] ?? [])));
+            if (empty($usernames)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละครอย่างน้อย 1 ชื่อ'], 400);
+            }
+
+            // Fetch accounts from DB to build cookie strings
+            $accountMap = DB::getAccountsByUsernames(array_values($usernames));
+            $notFound = [];
+            $lines = [];
+            foreach ($usernames as $u) {
+                $acc = $accountMap[strtolower($u)] ?? null;
+                if (!$acc) {
+                    $notFound[] = $u;
+                    continue;
+                }
+                $pass = !empty($acc['password']) ? $acc['password'] : 'unknown';
+                $lines[] = $acc['username'] . ':' . $pass . ':' . $acc['cookie'];
+            }
+
+            if (empty($lines)) {
+                $msg = 'ไม่พบบัญชีในระบบสำหรับ: ' . implode(', ', $notFound);
+                jsonResponse(['success' => false, 'error' => $msg], 404);
+            }
+
+            // ===== CHECK & DEDUCT CREDITS (1 credit per username sent) =====
+            $creditsNeeded = count($lines);
+            $currentCredits = DB::getMemberCredits((int)$_SESSION['member_id']);
+            if ($currentCredits < $creditsNeeded) {
+                jsonResponse([
+                    'success' => false,
+                    'error' => "เครดิตไม่เพียงพอ — มี {$currentCredits} ครั้ง แต่ต้องใช้ {$creditsNeeded} ครั้ง กรุณาเติมเครดิตก่อน",
+                    'credits' => $currentCredits,
+                    'needed' => $creditsNeeded,
+                ], 402);
+            }
+            // Deduct credits immediately before sending
+            DB::deductMemberCredits((int)$_SESSION['member_id'], $creditsNeeded);
+
+            $accountsStr = implode("\n", $lines);
+
+            // POST to ZeroPoint API
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => 'https://zeropoint.to/api/faceunlock-api/submit',
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'X-API-Key: ' . $zpKey,
+                    'Content-Type: application/json',
+                ],
+                CURLOPT_POSTFIELDS => json_encode(['accounts' => $accountsStr, 'priority' => false]),
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+            $raw = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            $resp = json_decode($raw, true);
+            if ($httpCode !== 200 || empty($resp['job_id'])) {
+                // Refund credits if API call failed
+                DB::addMemberCredits((int)$_SESSION['member_id'], $creditsNeeded);
+                $errMsg = $resp['error'] ?? $raw ?? 'ZeroPoint API Error';
+                jsonResponse(['success' => false, 'error' => $errMsg], $httpCode ?: 502);
+            }
+
+            $result = [
+                'job_id' => $resp['job_id'],
+                'total_accounts' => count($lines),
+                'credits_used' => $creditsNeeded,
+                'credits_remaining' => DB::getMemberCredits((int)$_SESSION['member_id']),
+            ];
+            if (!empty($notFound)) {
+                $result['not_found'] = $notFound;
+            }
+            jsonResponse(['success' => true, 'data' => $result]);
+            break;
+
+        case 'face_status':
+            if (empty($_SESSION['member_id'])) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาเข้าสู่ระบบสมาชิกก่อน'], 401);
+            }
+
+            $zpKey = DB::getSetting('zp_api_key', '');
+            if (empty($zpKey)) {
+                jsonResponse(['success' => false, 'error' => 'ยังไม่ได้ตั้งค่า ZeroPoint API Key'], 503);
+            }
+
+            $jobId = trim($_GET['job_id'] ?? '');
+            if (empty($jobId)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุ job_id'], 400);
+            }
+
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => 'https://zeropoint.to/api/faceunlock-api/status/' . urlencode($jobId),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTPHEADER => ['X-API-Key: ' . $zpKey],
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_SSL_VERIFYPEER => false,
+            ]);
+            $raw = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            $resp = json_decode($raw, true);
+            if ($httpCode !== 200) {
+                jsonResponse(['success' => false, 'error' => $resp['error'] ?? 'ZeroPoint API Error'], $httpCode ?: 502);
+            }
+            jsonResponse(['success' => true, 'data' => $resp]);
+            break;
+
+        // ======= ADMIN: MEMBER MANAGEMENT =======
+
+        case 'admin_list_members':
+            requireAdmin();
+            jsonResponse(['success' => true, 'members' => DB::listMembers()]);
+            break;
+
+        case 'admin_approve_member':
+            requireAdmin();
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $id = (int)($body['id'] ?? 0);
+            if (!$id) jsonResponse(['success' => false, 'error' => 'ไม่พบ ID'], 400);
+            DB::updateMemberStatus($id, 'approved');
+            jsonResponse(['success' => true, 'message' => 'อนุมัติสมาชิกสำเร็จ']);
+            break;
+
+        case 'admin_reject_member':
+            requireAdmin();
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $id = (int)($body['id'] ?? 0);
+            if (!$id) jsonResponse(['success' => false, 'error' => 'ไม่พบ ID'], 400);
+            DB::updateMemberStatus($id, 'rejected');
+            jsonResponse(['success' => true, 'message' => 'ปฏิเสธสมาชิกแล้ว']);
+            break;
+
+        case 'admin_delete_member':
+            requireAdmin();
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $id = (int)($body['id'] ?? 0);
+            if (!$id) jsonResponse(['success' => false, 'error' => 'ไม่พบ ID'], 400);
+            DB::deleteMember($id);
+            jsonResponse(['success' => true]);
+            break;
+
+        case 'admin_save_zp_key':
+            requireAdmin();
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $key = trim($body['zp_api_key'] ?? '');
+            DB::setSetting('zp_api_key', $key);
+            jsonResponse(['success' => true, 'message' => 'บันทึก ZeroPoint API Key สำเร็จ']);
+            break;
+
+        case 'admin_topup_log':
+            requireAdmin();
+            jsonResponse(['success' => true, 'logs' => DB::getTopupLog(500)]);
+            break;
+
+        case 'admin_set_member_credits':
+            requireAdmin();
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $id = (int)($body['id'] ?? 0);
+            $credits = (int)($body['credits'] ?? 0);
+            if (!$id) jsonResponse(['success' => false, 'error' => 'ไม่พบ ID'], 400);
+            DB::setMemberCredits($id, $credits);
+            jsonResponse(['success' => true, 'message' => "ตั้งเครดิตเป็น {$credits} ครั้งแล้ว"]);
+            break;
+
+        case 'admin_add_member_credits':
+            requireAdmin();
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $id = (int)($body['id'] ?? 0);
+            $amount = (int)($body['amount'] ?? 0);
+            if (!$id || $amount <= 0) jsonResponse(['success' => false, 'error' => 'ข้อมูลไม่ถูกต้อง'], 400);
+            DB::addMemberCredits($id, $amount);
+            $newCredits = DB::getMemberCredits($id);
+            jsonResponse(['success' => true, 'message' => "เพิ่ม {$amount} ครั้ง รวม {$newCredits} ครั้ง"]);
+            break;
+
+        // ======= MEMBER: TOPUP VOUCHER =======
+
+        case 'topup_voucher':
+            if (empty($_SESSION['member_id'])) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาเข้าสู่ระบบสมาชิกก่อน'], 401);
+            }
+            $member = DB::getMemberById((int)$_SESSION['member_id']);
+            if (!$member || $member['status'] !== 'approved') {
+                jsonResponse(['success' => false, 'error' => 'บัญชีสมาชิกยังไม่ได้รับการอนุมัติ'], 403);
+            }
+
+            $twPhone = DB::getSetting('tw_phone', '');
+            if (empty($twPhone)) {
+                jsonResponse(['success' => false, 'error' => 'ยังไม่ได้ตั้งค่าเบอร์รับซอง กรุณาติดต่อแอดมิน'], 503);
+            }
+
+            $body = json_decode(file_get_contents('php://input'), true) ?? [];
+            $link = trim($body['link'] ?? '');
+            if (empty($link)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาวาง link ซองก่อน'], 400);
+            }
+            if (!str_contains($link, 'gift.truemoney.com') && !str_contains($link, 'true')) {
+                jsonResponse(['success' => false, 'error' => 'link ซองไม่ถูกต้อง — ต้องเป็น gift.truemoney.com'], 400);
+            }
+
+            // Check if voucher already used
+            if (DB::checkVoucherUsed($link)) {
+                jsonResponse(['success' => false, 'error' => 'ซองนี้ถูกใช้งานแล้ว'], 409);
+            }
+
+            // Extract Hash
+            $hash = "";
+            if (preg_match('/[?&]v=([a-zA-Z0-9]+)/', $link, $matches)) {
+                $hash = $matches[1];
+            } else {
+                $parts = explode('?v=', $link);
+                $hash = isset($parts[1]) ? $parts[1] : $link;
+                $hash = preg_replace('/[^a-zA-Z0-9]/', '', $hash);
+            }
+            if (empty($hash)) {
+                jsonResponse(['success' => false, 'error' => 'ไม่พบรหัสซองในลิ้งก์ที่ระบุ'], 400);
+            }
+
+            // Call Node.js Bridge (เพื่อหลบ Cloudflare)
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => "http://127.0.0.1:3000/redeem",
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'Accept: application/json'
+                ],
+                CURLOPT_POSTFIELDS => json_encode([
+                    'mobile' => $twPhone,
+                    'voucher_hash' => $hash
+                ]),
+                CURLOPT_TIMEOUT => 30,
+            ]);
+            $raw = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($raw === false) {
+                jsonResponse(['success' => false, 'error' => 'ไม่สามารถเชื่อมต่อ Node.js Bridge ได้ (ลืมรันคำสั่ง node tw_bridge.mjs หรือเปล่า?)'], 502);
+            }
+
+            if ($httpCode === 403 || str_contains($raw, 'Cloudflare') || str_contains($raw, 'Attention Required!')) {
+                jsonResponse(['success' => false, 'error' => 'ถึงใช้ Node.js แล้ว เซิร์ฟเวอร์ของคุณก็ยังโดนบล็อกโดย Cloudflare อยู่ดี ต้องหา API เจ้าอื่นจริงๆ ครับ'], 403);
+            }
+
+            $twResp = json_decode($raw, true);
+
+            // TrueMoney Direct Response logic
+            $twStatus = $twResp['status']['code'] ?? '';
+            if ($twStatus !== 'SUCCESS') {
+                $errMsg = 'ซองไม่สามารถใช้งานได้';
+                if ($twStatus === 'VOUCHER_OUT_OF_STOCK') $errMsg = 'ซองถูกรับไปหมดแล้ว';
+                elseif ($twStatus === 'VOUCHER_NOT_FOUND') $errMsg = 'ไม่พบซองนี้ในระบบ หรือลิ้งก์ผิด';
+                elseif ($twStatus === 'VOUCHER_EXPIRED') $errMsg = 'ซองนี้หมดอายุแล้ว';
+                elseif ($twStatus === 'TARGET_USER_REDEEMED') $errMsg = 'ซองนี้คุณเคยรับไปแล้ว (เบอร์รับซองซ้ำ)';
+                elseif ($twStatus === 'CANNOT_GET_OWN_VOUCHER') $errMsg = 'ไม่สามารถรับซองของตัวเองได้';
+                elseif (isset($twResp['status']['message'])) $errMsg = $twResp['status']['message'];
+                jsonResponse(['success' => false, 'error' => $errMsg], 400);
+            }
+
+            $amountThb = (float)($twResp['data']['voucher']['redeemed_amount_baht'] ?? 0);
+            if ($amountThb <= 0) {
+                $amountThb = (float)($twResp['data']['voucher']['amount_baht'] ?? 0);
+            }
+            if ($amountThb <= 0) {
+                jsonResponse(['success' => false, 'error' => 'ไม่สามารถดึงมูลค่าซองได้ หรือซองมีมูลค่า 0 บาท'], 400);
+            }
+
+            // Calculate credits to add
+            $rateBaht = max(1, (int)DB::getSetting('tw_rate_baht', '5'));
+            $rateCredits = max(1, (int)DB::getSetting('tw_rate_credits', '1'));
+            $creditsToAdd = (int)floor(($amountThb / $rateBaht) * $rateCredits);
+
+            if ($creditsToAdd <= 0) {
+                jsonResponse(['success' => false, 'error' => "ยอดเงิน {$amountThb} บาท ไม่เพียงพอสำหรับแลกเครดิต (ขั้นต่ำ {$rateBaht} บาท)"], 400);
+            }
+
+            // Add credits + log
+            DB::addMemberCredits((int)$_SESSION['member_id'], $creditsToAdd);
+            DB::logTopup((int)$_SESSION['member_id'], $member['email'], $link, $amountThb, $creditsToAdd);
+
+            $newCredits = DB::getMemberCredits((int)$_SESSION['member_id']);
+            jsonResponse([
+                'success' => true,
+                'message' => "เติมสำเร็จ! ได้รับ {$creditsToAdd} ครั้งสแกน (จาก {$amountThb} บาท)",
+                'amount_thb' => $amountThb,
+                'credits_added' => $creditsToAdd,
+                'credits_total' => $newCredits,
+            ]);
+            break;
+
+        // ======= MEMBER: GET MY CREDITS =======
+
+        case 'get_my_credits':
+            if (empty($_SESSION['member_id'])) {
+                jsonResponse(['success' => false, 'logged_in' => false, 'credits' => 0]);
+            }
+            $credits = DB::getMemberCredits((int)$_SESSION['member_id']);
+            jsonResponse(['success' => true, 'credits' => $credits]);
             break;
 
         default:

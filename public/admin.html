@@ -55,6 +55,15 @@
           <span>จัดการฐานข้อมูลบัญชี</span>
           <span class="tab-badge" id="adminAccCount">0</span>
         </button>
+        <button class="tab-btn" data-tab="tab-members">
+          <span>👤</span>
+          <span>สมาชิก Face Unlock</span>
+          <span class="tab-badge" id="adminMemberCount">0</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-topup">
+          <span>💳</span>
+          <span>ประวัติการเติมเครดิต</span>
+        </button>
         <button class="tab-btn" data-tab="tab-history">
           <span>📜</span>
           <span>ประวัติงานที่ลูกค้าส่ง</span>
@@ -114,6 +123,32 @@
               <label class="form-label" for="settingAdminPass">เปลี่ยนรหัสผ่านแอดมิน (ถ้าต้องการ):</label>
               <div class="form-desc">รหัสผ่านสำหรับเข้าหน้านี้ (ค่าเริ่มต้น: <code>admin1234</code>)</div>
               <input type="password" id="settingAdminPass" placeholder="ใส่รหัสผ่านใหม่ หรือเว้นว่างไว้หากไม่เปลี่ยน" />
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="settingZpKey">😊 ZeroPoint API Key (สำหรับ Face Unlock):</label>
+              <div class="form-desc">API Key จากเว็บ <code>zeropoint.to</code> (ขึ้นต้นด้วย <code>ZP_FaceUnlock_</code>)</div>
+              <input type="password" id="settingZpKey" placeholder="ZP_FaceUnlock_xxxxxxxxxxxxxx" />
+              <div id="adminMaskedZpKey" style="font-size:12px;color:var(--text-muted);margin-top:6px;"></div>
+            </div>
+
+            <div class="form-group" style="display:flex;gap:16px;">
+              <div style="flex:1;">
+                <label class="form-label" for="settingTwPhone">💳 เบอร์ TrueWallet สำหรับรับซอง:</label>
+                <div class="form-desc">เบอร์โทรศัพท์ที่ผูกกับ TrueMoney (เช่น 0812345678)</div>
+                <input type="text" id="settingTwPhone" placeholder="08xxxxxxxx" />
+              </div>
+              <div style="flex:1;">
+                <label class="form-label">🔄 อัตราแลกเปลี่ยน (บาท/ครั้ง):</label>
+                <div class="form-desc">ตัวอย่าง: 5 บาท = 1 ครั้ง</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <input type="number" id="settingTwRateBaht" min="1" placeholder="บาท" style="flex:1;" />
+                  <span style="color:var(--text-muted);">บาท</span>
+                  <span style="color:var(--text-muted);margin:0 4px;">=</span>
+                  <input type="number" id="settingTwRateCredits" min="1" placeholder="ครั้ง" style="flex:1;" />
+                  <span style="color:var(--text-muted);">ครั้ง</span>
+                </div>
+              </div>
             </div>
 
             <div style="display:flex;gap:12px;margin-top:24px;">
@@ -195,7 +230,77 @@
         </div>
       </div>
 
-      <!-- ==================== TAB 3: JOB HISTORY ==================== -->
+      <!-- ==================== TAB 3: MEMBERS MANAGEMENT ==================== -->
+      <div id="tab-members" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">👤</span>
+              <span>จัดการสมาชิก Face Unlock</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btnAdminReloadMembers">รีเฟรช</button>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;">#</th>
+                  <th>อีเมล</th>
+                  <th>เครดิตสแกน</th>
+                  <th>สถานะ</th>
+                  <th>วันที่สมัคร</th>
+                  <th style="text-align:right;">จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="adminMemberTableBody">
+                <tr>
+                  <td colspan="6" style="text-align:center;color:var(--text-muted);padding:36px;">
+                    กำลังโหลดข้อมูลสมาชิก...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TAB: TOPUP LOG ==================== -->
+      <div id="tab-topup" class="tab-pane">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <span class="card-title-icon">💳</span>
+              <span>ประวัติการเติมเครดิตด้วยซอง TrueWallet</span>
+            </div>
+            <button class="btn btn-secondary btn-sm" id="btnAdminReloadTopup">รีเฟรช</button>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:40px;">#</th>
+                  <th>เวลา</th>
+                  <th>อีเมลสมาชิก</th>
+                  <th>link ซอง</th>
+                  <th>จำนวนเงิน (บาท)</th>
+                  <th>เครดิตที่ได้</th>
+                </tr>
+              </thead>
+              <tbody id="adminTopupTableBody">
+                <tr>
+                  <td colspan="6" style="text-align:center;color:var(--text-muted);padding:36px;">
+                    กำลังโหลดประวัติการเติม...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== TAB 4: JOB HISTORY ==================== -->
       <div id="tab-history" class="tab-pane">
         <div class="card">
           <div class="card-header">
@@ -305,6 +410,6 @@
     </div>
   </div>
 
-  <script src="admin.js"></script>
+  <script src="admin.js?v=20260905_1"></script>
 </body>
 </html>

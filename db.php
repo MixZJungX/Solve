@@ -33,6 +33,35 @@ class DB {
         // Set defaults if not exist
         $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('queue_mode', 'normal')");
         $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('admin_password', 'admin1234')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('zp_api_key', '')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('tw_phone', '')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('tw_rate_baht', '5')");
+        $pdo->exec("INSERT OR IGNORE INTO settings (key, value) VALUES ('tw_rate_credits', '1')");
+
+        // Members table (for Face Unlock access control)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS members (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+            password_hash TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            credits INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        // Add credits column to existing members table if it doesn't exist
+        try { $pdo->exec("ALTER TABLE members ADD COLUMN credits INTEGER DEFAULT 0"); } catch (\Exception $e) {}
+
+        // Topup log table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS topup_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            member_id INTEGER NOT NULL,
+            email TEXT NOT NULL,
+            link TEXT NOT NULL,
+            amount_thb REAL NOT NULL,
+            credits_added INTEGER NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
 
         // Accounts table
         $pdo->exec("CREATE TABLE IF NOT EXISTS accounts (
@@ -257,5 +286,91 @@ class DB {
             WHERE username = ? COLLATE NOCASE
         ");
         $stmt->execute([trim($status), trim($username)]);
+    }
+
+    // ========== MEMBER METHODS (Face Unlock access control) ==========
+
+    public static function getMemberByEmail(string $email): ?array {
+        $stmt = self::get()->prepare("SELECT * FROM members WHERE email = ? COLLATE NOCASE");
+        $stmt->execute([trim($email)]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public static function getMemberById(int $id): ?array {
+        $stmt = self::get()->prepare("SELECT * FROM members WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        return $row ?: null;
+    }
+
+    public static function createMember(string $email, string $passwordHash): bool {
+        $stmt = self::get()->prepare("
+            INSERT OR IGNORE INTO members (email, password_hash, status)
+            VALUES (?, ?, 'pending')
+        ");
+        return $stmt->execute([trim($email), $passwordHash]);
+    }
+
+    public static function updateMemberStatus(int $id, string $status): bool {
+        $stmt = self::get()->prepare("
+            UPDATE members SET status = ?, updated_at = datetime('now') WHERE id = ?
+        ");
+        return $stmt->execute([$status, $id]);
+    }
+
+    public static function listMembers(): array {
+        return self::get()->query("SELECT id, email, status, credits, created_at, updated_at FROM members ORDER BY id DESC")->fetchAll();
+    }
+
+    public static function deleteMember(int $id): bool {
+        $stmt = self::get()->prepare("DELETE FROM members WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
+
+    // ========== CREDITS METHODS ==========
+
+    public static function getMemberCredits(int $id): int {
+        $stmt = self::get()->prepare("SELECT credits FROM members WHERE id = ?");
+        $stmt->execute([$id]);
+        $row = $stmt->fetch();
+        return $row ? (int)$row['credits'] : 0;
+    }
+
+    public static function addMemberCredits(int $id, int $amount): bool {
+        $stmt = self::get()->prepare("UPDATE members SET credits = credits + ?, updated_at = datetime('now') WHERE id = ?");
+        return $stmt->execute([$amount, $id]);
+    }
+
+    public static function deductMemberCredits(int $id, int $amount): bool {
+        $stmt = self::get()->prepare("UPDATE members SET credits = MAX(0, credits - ?), updated_at = datetime('now') WHERE id = ?");
+        return $stmt->execute([$amount, $id]);
+    }
+
+    public static function setMemberCredits(int $id, int $amount): bool {
+        $stmt = self::get()->prepare("UPDATE members SET credits = ?, updated_at = datetime('now') WHERE id = ?");
+        return $stmt->execute([max(0, $amount), $id]);
+    }
+
+    // ========== TOPUP LOG METHODS ==========
+
+    public static function logTopup(int $memberId, string $email, string $link, float $amountThb, int $creditsAdded): bool {
+        $stmt = self::get()->prepare("
+            INSERT INTO topup_log (member_id, email, link, amount_thb, credits_added)
+            VALUES (?, ?, ?, ?, ?)
+        ");
+        return $stmt->execute([$memberId, $email, $link, $amountThb, $creditsAdded]);
+    }
+
+    public static function getTopupLog(int $limit = 200): array {
+        $stmt = self::get()->prepare("SELECT * FROM topup_log ORDER BY id DESC LIMIT ?");
+        $stmt->execute([$limit]);
+        return $stmt->fetchAll();
+    }
+
+    public static function checkVoucherUsed(string $link): bool {
+        $stmt = self::get()->prepare("SELECT id FROM topup_log WHERE link = ? LIMIT 1");
+        $stmt->execute([trim($link)]);
+        return (bool)$stmt->fetch();
     }
 }
