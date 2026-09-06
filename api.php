@@ -419,6 +419,7 @@ try {
                     'face_scan_cost' => $faceScanCost,
                     'has_inw_key' => !empty($inwKey),
                     'inw_masked_key' => $inwMasked,
+                    'auto_approve_members' => DB::getSetting('auto_approve_members', 'false'),
                 ]
             ]);
             break;
@@ -448,6 +449,9 @@ try {
             if (isset($input['face_scan_cost'])) {
                 $faceScanCost = max(1, (int)$input['face_scan_cost']);
                 DB::setSetting('face_scan_cost', (string)$faceScanCost);
+            }
+            if (isset($input['auto_approve_members'])) {
+                DB::setSetting('auto_approve_members', trim($input['auto_approve_members']) === 'true' ? 'true' : 'false');
             }
             if (isset($input['inw_api_key'])) {
                 $inwKey = trim($input['inw_api_key']);
@@ -787,8 +791,16 @@ try {
                 jsonResponse(['success' => false, 'error' => 'อีเมลนี้ถูกใช้งานแล้ว'], 409);
             }
             $hash = password_hash($password, PASSWORD_DEFAULT);
-            DB::createMember($email, $hash);
-            jsonResponse(['success' => true, 'message' => 'สมัครสมาชิกสำเร็จ! รอแอดมินอนุมัติก่อนใช้งานระบบสแกนหน้า']);
+            $autoApprove = DB::getSetting('auto_approve_members', 'false');
+            $status = ($autoApprove === 'true') ? 'approved' : 'pending';
+            
+            DB::createMember($email, $hash, $status);
+            
+            if ($status === 'approved') {
+                jsonResponse(['success' => true, 'message' => 'สมัครสมาชิกสำเร็จ! สามารถเข้าใช้งานระบบสแกนหน้าได้ทันที']);
+            } else {
+                jsonResponse(['success' => true, 'message' => 'สมัครสมาชิกสำเร็จ! รอแอดมินอนุมัติก่อนใช้งานระบบสแกนหน้า']);
+            }
             break;
 
         case 'member_login':

@@ -169,6 +169,10 @@ async function loadAdminSettings() {
           if (inwMaskEl) inwMaskEl.textContent = 'ยังไม่ได้ใส่ inwcloud API Key';
         }
       }
+      const autoApproveEl = document.getElementById('settingAutoApprove');
+      if (autoApproveEl && cfg.auto_approve_members !== undefined) {
+        autoApproveEl.value = cfg.auto_approve_members;
+      }
 
       // Queue mode radio
       const mode = cfg.queue_mode || 'normal';
@@ -204,12 +208,15 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
   const faceScanCost = document.getElementById('settingFaceScanCost')?.value.trim();
   const inwKey = document.getElementById('settingInwKey')?.value.trim();
 
+  const autoApprove = document.getElementById('settingAutoApprove')?.value;
+
   const payload = { queue_mode: queueMode };
   if (apiKey) payload.api_key = apiKey;
   if (adminPass) payload.admin_password = adminPass;
   if (twPhone !== undefined) payload.tw_phone = twPhone;
   if (faceScanCost !== undefined) payload.face_scan_cost = faceScanCost;
   if (inwKey) payload.inw_api_key = inwKey;
+  if (autoApprove !== undefined) payload.auto_approve_members = autoApprove;
 
   const { ok, data } = await apiCall('/api.php?action=save_settings', 'POST', payload);
   if (ok && data.success) {

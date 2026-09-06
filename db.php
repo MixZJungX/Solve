@@ -319,13 +319,13 @@ class DB {
         return $row ?: null;
     }
 
-    public static function createMember(string $email, string $passwordHash): bool {
+    public static function createMember(string $email, string $passwordHash, string $status = 'pending'): bool {
         $email = strtolower($email);
         $stmt = self::get()->prepare("
-            INSERT OR IGNORE INTO members (email, password_hash, status)
-            VALUES (?, ?, 'approved')
+            INSERT INTO members (email, password_hash, status)
+            VALUES (?, ?, ?) ON CONFLICT (email) DO NOTHING
         ");
-        return $stmt->execute([trim($email), $passwordHash]);
+        return $stmt->execute([trim($email), $passwordHash, $status]);
     }
 
     public static function updateMemberStatus(int $id, string $status): bool {
