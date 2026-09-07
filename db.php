@@ -359,7 +359,7 @@ class DB {
     }
 
     public static function deductMemberCredits(int $id, int $amount): bool {
-        $stmt = self::get()->prepare("UPDATE members SET credits = MAX(0, credits - ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?");
+        $stmt = self::get()->prepare("UPDATE members SET credits = GREATEST(0, credits - ?), updated_at = CURRENT_TIMESTAMP WHERE id = ?");
         return $stmt->execute([$amount, $id]);
     }
 
