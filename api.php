@@ -1138,13 +1138,11 @@ try {
                 jsonResponse(['success' => false, 'error' => 'ไม่สามารถดึงมูลค่าซองได้ หรือซองมีมูลค่า 0 บาท'], 400);
             }
 
-            // Calculate credits to add
-            $rateBaht = max(1, (int)DB::getSetting('tw_rate_baht', '5'));
-            $rateCredits = max(1, (int)DB::getSetting('tw_rate_credits', '1'));
-            $creditsToAdd = (int)floor(($amountThb / $rateBaht) * $rateCredits);
+            // Calculate credits to add (1:1 ratio)
+            $creditsToAdd = (int)floor($amountThb);
 
             if ($creditsToAdd <= 0) {
-                jsonResponse(['success' => false, 'error' => "ยอดเงิน {$amountThb} บาท ไม่เพียงพอสำหรับแลกเครดิต (ขั้นต่ำ {$rateBaht} บาท)"], 400);
+                jsonResponse(['success' => false, 'error' => "ยอดเงิน {$amountThb} บาท ไม่เพียงพอสำหรับแลกเครดิต (ขั้นต่ำ 1 บาท)"], 400);
             }
 
             // Add credits + log
