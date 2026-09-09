@@ -161,7 +161,12 @@ async function loadAdminSettings() {
       }
       const inwKeyEl = document.getElementById('settingInwKey');
       if (inwKeyEl) {
-        const inwMaskEl = document.getElementById('adminMaskedInwKey');
+        const zsMaskEl = document.getElementById('adminMaskedZsKey');
+      if (zsMaskEl) {
+        if (cfg.has_zs_key) zsMaskEl.textContent = 'มี ZeroSolver Key ในระบบแล้ว (ถูกซ่อนไว้)';
+        else zsMaskEl.textContent = 'ยังไม่ได้ใส่ ZeroSolver API Key';
+      }
+      const inwMaskEl = document.getElementById('adminMaskedInwKey');
         if (cfg.has_inw_key) {
           inwKeyEl.placeholder = '•••••••••••• (ตั้งค่าแล้ว)';
           if (inwMaskEl) inwMaskEl.textContent = `คีย์ปัจจุบัน: ${cfg.inw_masked_key}`;
@@ -172,6 +177,10 @@ async function loadAdminSettings() {
       const autoApproveEl = document.getElementById('settingAutoApprove');
       if (autoApproveEl && cfg.auto_approve_members !== undefined) {
         autoApproveEl.value = cfg.auto_approve_members;
+      }
+      const captchaProvEl = document.getElementById('settingCaptchaProvider');
+      if (captchaProvEl && cfg.captcha_provider) {
+        captchaProvEl.value = cfg.captcha_provider;
       }
 
       // Queue mode radio
@@ -204,11 +213,13 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
   const apiKey = document.getElementById('settingApiKey').value.trim();
   const adminPass = document.getElementById('settingAdminPass').value.trim();
   const zpKey = document.getElementById('settingZpKey')?.value.trim() || '';
+  const zsKey = document.getElementById('settingZsKey')?.value.trim() || '';
   const twPhone = document.getElementById('settingTwPhone')?.value.trim();
   const faceScanCost = document.getElementById('settingFaceScanCost')?.value.trim();
   const inwKey = document.getElementById('settingInwKey')?.value.trim();
 
   const autoApprove = document.getElementById('settingAutoApprove')?.value;
+  const captchaProvider = document.getElementById('settingCaptchaProvider')?.value;
 
   const payload = { queue_mode: queueMode };
   if (apiKey) payload.api_key = apiKey;
@@ -216,13 +227,16 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
   if (twPhone !== undefined) payload.tw_phone = twPhone;
   if (faceScanCost !== undefined) payload.face_scan_cost = faceScanCost;
   if (inwKey) payload.inw_api_key = inwKey;
+  if (zsKey) payload.zerosolver_api_key = zsKey;
   if (autoApprove !== undefined) payload.auto_approve_members = autoApprove;
+  if (captchaProvider) payload.captcha_provider = captchaProvider;
 
   const { ok, data } = await apiCall('/api.php?action=save_settings', 'POST', payload);
   if (ok && data.success) {
     showToast('บันทึกการตั้งค่าร้านค้าเรียบร้อยแล้ว!', 'success');
     document.getElementById('settingApiKey').value = '';
     document.getElementById('settingAdminPass').value = '';
+    if (document.getElementById('settingZsKey')) document.getElementById('settingZsKey').value = '';
 
     // Save ZP Key separately if provided
     if (zpKey) {
@@ -468,14 +482,18 @@ async function loadAdminHistory() {
       }
 
       tbody.innerHTML = jobs.map(j => {
-        const thb = (j.total_amount / 100).toFixed(2);
+        const thb = j.service === 'captcha_zp' ? 'ZP' : (j.total_amount / 100).toFixed(2);
         const refundThb = (j.refunded_amount / 100).toFixed(2);
-        const queueModeText = j.priority ? '⚡ เร่งด่วน x2' : '⏳ ปกติ';
+        const queueModeText = j.priority ? '⚡ ด่วน x2' : '🐢 ปกติ';
+        const serviceText = j.service === 'face_unlock' ? '🔓 Face' : (j.service === 'captcha_zp' ? '🧩 ZP' : '🧩 HS');
         const sCount = j.success_count ?? (j.status === 'COMPLETED' ? j.total_accounts : 0);
         const fCount = j.fail_count ?? 0;
         return `
           <tr>
-            <td class="mono" style="font-size:12px;color:var(--lemon);font-weight:600;">${j.id.substring(0, 16)}...</td>
+            <td class="mono" style="font-size:12px;color:var(--lemon);font-weight:600;">
+              ${j.id.substring(0, 8)}...<br>
+              <span style="font-size:10px;color:var(--text-muted);">${serviceText}</span>
+            </td>
             <td>${renderStatusTag(j.status)}</td>
             <td><span style="font-size:11px;background:var(--input-bg);padding:3px 8px;border-radius:4px;border:1px solid var(--panel-border);">${queueModeText}</span></td>
             <td style="font-weight:600;font-family:var(--font-mono);">${j.total_accounts}</td>

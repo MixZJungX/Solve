@@ -166,64 +166,132 @@ try {
                 ], 404);
             }
 
-            // Admin decides queue mode (normal or priority x2)
+            // Admin decides queue mode and provider
             $queueMode = DB::getSetting('queue_mode', 'normal');
             $priority = ($queueMode === 'priority');
+            $provider = DB::getSetting('captcha_provider', 'highspec');
 
             $note = 'Lemon Shop Customer (' . count($jobAccounts) . ' accs)';
-            $payload = [
-                'note' => $note,
-                'accounts' => $jobAccounts
-            ];
 
-            $endpoint = "/external/job/captcha/submit?service=directapi";
-            if ($priority) {
-                $endpoint .= '&priority=true';
-            }
-
-            $res = callHighspec($endpoint, 'POST', $payload);
-
-            if ($res['status'] === 201) {
-                $jobData = $res['data']['data'] ?? [];
-                $jobId = $jobData['id'] ?? '';
-
-                DB::saveJob([
-                    'id' => $jobId,
-                    'service' => 'captcha',
-                    'status' => $jobData['status'] ?? 'PENDING',
-                    'priority' => $priority,
-                    'note' => $note,
-                    'total_accounts' => count($jobAccounts),
-                    'total_amount' => $jobData['total_amount'] ?? 0,
-                    'accounts' => $usernames,
-                    'raw' => $res['data']
-                ]);
-
-                foreach ($usernames as $u) {
-                    DB::updateAccountUsage($u, $jobId, 'PENDING');
+            if ($provider === 'zeropoint') {
+                $zpKey = DB::getSetting('zp_api_key', '');
+                if (empty($zpKey)) {
+                    jsonResponse(['success' => false, 'error' => 'แอดมินยังไม่ได้ตั้งค่า ZeroPoint API Key'], 503);
+                }
+                
+                $zpAccounts = [];
+                foreach ($jobAccounts as $ja) {
+                    $pw = $accountMap[strtolower($ja['username'])]['password'] ?? '';
+                    $zpAccounts[] = $ja['username'] . ':' . $pw . ':' . $ja['cookie'];
                 }
 
-                jsonResponse([
-                    'success' => true,
-                    'message' => 'ส่งงานแก้ Captcha เรียบร้อยแล้ว!',
-                    'data' => [
-                        'job_id' => $jobId,
-                        'status' => $jobData['status'] ?? 'PENDING',
-                        'queue_position' => $jobData['queue_position'] ?? 0,
+                $ch = curl_init();
+                curl_setopt_array($ch, [
+                    CURLOPT_URL => "https://zeropoint.to/api/zerosolver-api/submit",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_POST => true,
+                    CURLOPT_HTTPHEADER => [
+                        "Content-Type: application/json",
+                        "X-API-Key: $zpKey"
+                    ],
+                    CURLOPT_POSTFIELDS => json_encode(['accounts' => implode("\n", $zpAccounts)]),
+                    CURLOPT_TIMEOUT => 30
+                ]);
+                $raw = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                $resZp = json_decode($raw, true) ?? [];
+                
+                if ($httpCode === 200 && !empty($resZp['job_id'])) {
+                    $jobId = $resZp['job_id'];
+                    DB::saveJob([
+                        'id' => $jobId,
+                        'service' => 'captcha_zp',
+                        'status' => 'PENDING',
+                        'priority' => false,
+                        'note' => $note,
                         'total_accounts' => count($jobAccounts),
-                        'usernames' => $usernames,
-                        'queue_mode' => $queueMode
-                    ]
-                ], 201);
-            } elseif ($res['status'] === 409) {
+                        'total_amount' => 0,
+                        'accounts' => $usernames,
+                        'raw' => $resZp
+                    ]);
+
+                    foreach ($usernames as $u) {
+                        DB::updateAccountUsage($u, $jobId, 'PENDING');
+                    }
+
+                    jsonResponse([
+                        'success' => true,
+                        'message' => 'ส่งงานแก้ Captcha เรียบร้อยแล้ว!',
+                        'data' => [
+                            'job_id' => $jobId,
+                            'status' => 'PENDING',
+                            'queue_position' => 0,
+                            'total_accounts' => count($jobAccounts),
+                            'usernames' => $usernames,
+                            'queue_mode' => 'normal'
+                        ]
+                    ], 201);
+                } else {
+                    jsonResponse(['success' => false, 'error' => $resZp['error'] ?? 'เกิดข้อผิดพลาดในการเชื่อมต่อ ZeroPoint'], $httpCode ?: 500);
+                }
+            } else {
+                // HIGHSPEC LOGIC
+                $payload = [
+                    'note' => $note,
+                    'accounts' => $jobAccounts
+                ];
+
+                $endpoint = "/external/job/captcha/submit?service=directapi";
+                if ($priority) {
+                    $endpoint .= '&priority=true';
+                }
+
+                $res = callHighspec($endpoint, 'POST', $payload);
+
+                if ($res['status'] === 201) {
+                    $jobData = $res['data']['data'] ?? [];
+                    $jobId = $jobData['id'] ?? '';
+
+                    DB::saveJob([
+                        'id' => $jobId,
+                        'service' => 'captcha',
+                        'status' => $jobData['status'] ?? 'PENDING',
+                        'priority' => $priority,
+                        'note' => $note,
+                        'total_accounts' => count($jobAccounts),
+                        'total_amount' => $jobData['total_amount'] ?? 0,
+                        'accounts' => $usernames,
+                        'raw' => $res['data']
+                    ]);
+
+                    foreach ($usernames as $u) {
+                        DB::updateAccountUsage($u, $jobId, 'PENDING');
+                    }
+
+                    jsonResponse([
+                        'success' => true,
+                        'message' => 'ส่งงานแก้ Captcha เรียบร้อยแล้ว!',
+                        'data' => [
+                            'job_id' => $jobId,
+                            'status' => $jobData['status'] ?? 'PENDING',
+                            'queue_position' => $jobData['queue_position'] ?? 0,
+                            'total_accounts' => count($jobAccounts),
+                            'usernames' => $usernames,
+                            'queue_mode' => $queueMode
+                        ]
+                    ], 201);
+                } elseif ($res['status'] === 409) {
                 jsonResponse([
                     'success' => false,
                     'error' => 'บัญชีที่คุณระบุกำลังอยู่ในคิวทำงานรอบก่อนหน้า กรุณารอ 1-2 นาทีแล้วลองใหม่อีกครั้งครับ'
                 ], 409);
-            } else {
-                $msg = $res['data']['message'] ?? $res['error'] ?? 'เกิดข้อผิดพลาดในการส่งงาน';
-                jsonResponse(['success' => false, 'error' => $msg], 500);
-            }
+                } else {
+                    $msg = $res['data']['message'] ?? $res['error'] ?? 'เกิดข้อผิดพลาดในการส่งงาน';
+                    jsonResponse(['success' => false, 'error' => $msg], 500);
+                }
+            } // END HIGHSPEC LOGIC
             break;
 
         case 'customer_job_status':
@@ -231,6 +299,57 @@ try {
             if (empty($id)) {
                 jsonResponse(['success' => false, 'error' => 'กรุณาระบุ Job ID'], 400);
             }
+            $localJobCheck = DB::getJob($id);
+            if ($localJobCheck && $localJobCheck['service'] === 'captcha_zp') {
+                $zpKey = DB::getSetting('zerosolver_api_key', '');
+                $ch = curl_init();
+                curl_setopt_array($ch, [
+                    CURLOPT_URL => "https://zeropoint.to/api/zerosolver-api/status/{$id}",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER => ["X-API-Key: $zpKey"]
+                ]);
+                $raw = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                $zpData = json_decode($raw, true) ?? [];
+                if ($httpCode === 200) {
+                    $zpStatus = strtoupper($zpData['status'] ?? 'PENDING');
+                    $successCount = (int)($zpData['successful'] ?? 0);
+                    $skipCount = (int)($zpData['already_solved'] ?? 0);
+                    $failCount = (int)($zpData['failed'] ?? 0);
+                    DB::updateJobStatus($id, [
+                        'status' => $zpStatus,
+                        'total_amount' => 0,
+                        'success_amount' => 0,
+                        'fail_amount' => 0,
+                        'skip_amount' => 0,
+                        'refunded_amount' => 0,
+                        'accounts_detail_json' => []
+                    ]);
+                    if ($zpStatus === 'COMPLETED' && $failCount === 0 && !empty($localJobCheck['accounts'])) {
+                        foreach ($localJobCheck['accounts'] as $u) {
+                            DB::updateAccountStatus($u, 'COMPLETED');
+                        }
+                    }
+                    jsonResponse([
+                        'success' => true,
+                        'data' => [
+                            'id' => $id,
+                            'status' => $zpStatus,
+                            'queue_position' => 0,
+                            'priority' => false,
+                            'queue_mode' => 'normal',
+                            'total_accounts' => $zpData['total_accounts'] ?? count($localJobCheck['accounts'] ?? []),
+                            'success_count' => $successCount,
+                            'fail_count' => $failCount,
+                            'skip_count' => $skipCount,
+                            'accounts' => $localJobCheck['accounts'] ?? [],
+                            'accounts_detail' => []
+                        ]
+                    ]);
+                }
+            }
+
 
             $res = callHighspec("/external/job/{$id}");
             if ($res['status'] === 200 && isset($res['data']['data'])) {
@@ -415,11 +534,13 @@ try {
                     'queue_mode' => $queueMode,
                     'has_zp_key' => !empty($zpKey),
                     'zp_masked_key' => $zpMasked,
+                    'has_zs_key' => !empty(DB::getSetting('zerosolver_api_key')),
                     'tw_phone' => $twPhone,
                     'face_scan_cost' => $faceScanCost,
                     'has_inw_key' => !empty($inwKey),
                     'inw_masked_key' => $inwMasked,
                     'auto_approve_members' => DB::getSetting('auto_approve_members', 'false'),
+                    'captcha_provider' => DB::getSetting('captcha_provider', 'highspec'),
                 ]
             ]);
             break;
@@ -452,6 +573,13 @@ try {
             }
             if (isset($input['auto_approve_members'])) {
                 DB::setSetting('auto_approve_members', trim($input['auto_approve_members']) === 'true' ? 'true' : 'false');
+            }
+            if (isset($input['captcha_provider'])) {
+                $provider = in_array($input['captcha_provider'], ['highspec', 'zeropoint']) ? $input['captcha_provider'] : 'highspec';
+                DB::setSetting('captcha_provider', $provider);
+            }
+            if (isset($input['zerosolver_api_key'])) {
+                DB::setSetting('zerosolver_api_key', trim($input['zerosolver_api_key']));
             }
             if (isset($input['inw_api_key'])) {
                 $inwKey = trim($input['inw_api_key']);
@@ -647,6 +775,62 @@ try {
             $id = trim($_GET['id'] ?? '');
             if (empty($id)) {
                 jsonResponse(['success' => false, 'error' => 'กรุณาระบุ Job ID'], 400);
+            $localJobCheck = DB::getJob($id);
+            if ($localJobCheck && $localJobCheck['service'] === 'captcha_zp') {
+                $zpKey = DB::getSetting('zerosolver_api_key', '');
+                $ch = curl_init();
+                curl_setopt_array($ch, [
+                    CURLOPT_URL => "https://zeropoint.to/api/zerosolver-api/status/{$id}",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_HTTPHEADER => ["X-API-Key: $zpKey"]
+                ]);
+                $raw = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                $zpData = json_decode($raw, true) ?? [];
+                if ($httpCode === 200) {
+                    $zpStatus = strtoupper($zpData['status'] ?? 'PENDING');
+                    $successCount = (int)($zpData['successful'] ?? 0);
+                    $skipCount = (int)($zpData['already_solved'] ?? 0);
+                    $failCount = (int)($zpData['failed'] ?? 0);
+                    DB::updateJobStatus($id, [
+                        'status' => $zpStatus,
+                        'total_amount' => 0,
+                        'success_amount' => 0,
+                        'fail_amount' => 0,
+                        'skip_amount' => 0,
+                        'refunded_amount' => 0,
+                        'accounts_detail_json' => []
+                    ]);
+                    if ($zpStatus === 'COMPLETED' && $failCount === 0 && !empty($localJobCheck['accounts'])) {
+                        foreach ($localJobCheck['accounts'] as $u) {
+                            DB::updateAccountStatus($u, 'COMPLETED');
+                        }
+                    }
+                    jsonResponse([
+                        'success' => true,
+                        'data' => [
+                            'id' => $id,
+                            'status' => $zpStatus,
+                            'queue_position' => 0,
+                            'service' => 'captcha_zp',
+                            'total_amount' => 0,
+                            'total_thb' => '0.00',
+                            'success_amount' => 0,
+                            'fail_amount' => 0,
+                            'skip_amount' => 0,
+                            'refunded_amount' => 0,
+                            'total_accounts' => $zpData['total_accounts'] ?? count($localJobCheck['accounts'] ?? []),
+                            'success_accounts' => $successCount,
+                            'fail_accounts' => $failCount,
+                            'skip_accounts' => $skipCount,
+                            'accounts_detail' => [],
+                            'accounts' => $localJobCheck['accounts'] ?? []
+                        ]
+                    ]);
+                }
+            }
+
             }
 
             $res = callHighspec("/external/job/{$id}");
