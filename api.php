@@ -174,9 +174,9 @@ try {
             $note = 'Lemon Shop Customer (' . count($jobAccounts) . ' accs)';
 
             if ($provider === 'zeropoint') {
-                $zpKey = DB::getSetting('zp_api_key', '');
+                $zpKey = DB::getSetting('zerosolver_api_key', '');
                 if (empty($zpKey)) {
-                    jsonResponse(['success' => false, 'error' => 'แอดมินยังไม่ได้ตั้งค่า ZeroPoint API Key'], 503);
+                    jsonResponse(['success' => false, 'error' => 'แอดมินยังไม่ได้ตั้งค่า ZeroSolver API Key'], 503);
                 }
                 
                 $zpAccounts = [];
@@ -189,6 +189,10 @@ try {
                 curl_setopt_array($ch, [
                     CURLOPT_URL => "https://zeropoint.to/api/zerosolver-api/submit",
                     CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_POST => true,
                     CURLOPT_HTTPHEADER => [
                         "Content-Type: application/json",
@@ -306,6 +310,8 @@ try {
                 curl_setopt_array($ch, [
                     CURLOPT_URL => "https://zeropoint.to/api/zerosolver-api/status/{$id}",
                     CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_HTTPHEADER => ["X-API-Key: $zpKey"]
                 ]);
                 $raw = curl_exec($ch);
@@ -347,8 +353,8 @@ try {
                             'accounts_detail' => []
                         ]
                     ]);
-                }
-            }
+                    } else { jsonResponse(['success' => false, 'error' => $zpData['error'] ?? 'Failed to connect to ZeroSolver'], $httpCode ?: 500); }
+                    }
 
 
             $res = callHighspec("/external/job/{$id}");
@@ -783,6 +789,8 @@ try {
                 curl_setopt_array($ch, [
                     CURLOPT_URL => "https://zeropoint.to/api/zerosolver-api/status/{$id}",
                     CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => 0,
                     CURLOPT_HTTPHEADER => ["X-API-Key: $zpKey"]
                 ]);
                 $raw = curl_exec($ch);
