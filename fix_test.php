@@ -1,0 +1,5 @@
+﻿<?php
+$c = file_get_contents("api.php");
+$c = str_replace("case 'get_settings':", "case 'test_zp':\n            \$zpKey = DB::getSetting('zerosolver_api_key', '');\n            \$jobs = DB::listJobs(10);\n            \$res = [];\n            foreach (\$jobs as \$j) {\n                if (\$j['service'] === 'captcha_zp') {\n                    \$ch = curl_init();\n                    curl_setopt_array(\$ch, [\n                        CURLOPT_URL => \"https://zeropoint.to/api/zerosolver-api/status/\" . \$j['id'],\n                        CURLOPT_RETURNTRANSFER => true,\n                        CURLOPT_HTTPHEADER => [\"X-API-Key: \$zpKey\"]\n                    ]);\n                    \$raw = curl_exec(\$ch);\n                    \$httpCode = curl_getinfo(\$ch, CURLINFO_HTTP_CODE);\n                    \$res[] = \"HTTP \$httpCode: \$raw\";\n                }\n            }\n            jsonResponse(['res' => \$res]);\n            break;\n        case 'get_settings':", $c);
+file_put_contents("api.php", $c);
+

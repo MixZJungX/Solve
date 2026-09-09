@@ -503,6 +503,7 @@ try {
 
 
         // ===================== ADMIN ACTIONS (PROTECTED) =====================
+        
         case 'get_settings':
             requireAdmin();
             $apiKey = DB::getSetting('api_key', '');
