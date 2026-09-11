@@ -286,9 +286,10 @@ async function loadAdminAccounts(query = '') {
 
       tbody.innerHTML = adminAccounts.map((acc, i) => {
         const isShop = (acc.account_type || 'shop') === 'shop';
-        const typeBadge = isShop
-          ? `<span style="background:rgba(52,211,153,0.15);color:#34d399;border:1px solid rgba(52,211,153,0.3);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;" onclick="toggleAccountType(${acc.id}, 'shop')" title="คลิกเพื่อเปลี่ยนเป็น External">🏪 Shop</span>`
-          : `<span style="background:rgba(250,204,21,0.15);color:#facc15;border:1px solid rgba(250,204,21,0.3);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;" onclick="toggleAccountType(${acc.id}, 'external')" title="คลิกเพื่อเปลี่ยนกลับเป็น Shop">💰 Paid</span>`;
+        const typeBadge = `<select style="width:85px; padding:2px 4px; font-size:11px; height:auto; background-color:var(--bg-lighter); border:1px solid var(--border-color); color:var(--text-color); border-radius:4px; outline:none; cursor:pointer;" onchange="changeAccountType(${acc.id}, this.value)">
+            <option value="shop" ${isShop ? 'selected' : ''}>🏪 Shop</option>
+            <option value="external" ${!isShop ? 'selected' : ''}>💰 Paid</option>
+          </select>`;
         return `
         <tr>
           <td style="color:var(--text-dim);font-family:var(--font-mono);font-size:12px;">${i + 1}</td>
@@ -321,16 +322,19 @@ async function loadAdminAccounts(query = '') {
   }
 }
 
-async function toggleAccountType(id, currentType) {
-  const newType = currentType === 'shop' ? 'external' : 'shop';
+async function changeAccountType(id, newType) {
   const label = newType === 'shop' ? '🏪 Shop (ฟรี)' : '💰 Paid (ชำระเงิน)';
-  if (!confirm(`เปลี่ยนประเภทบัญชีเป็น ${label} ใช่หรือไม่?`)) return;
+  if (!confirm(`ยืนยันการเปลี่ยนประเภทบัญชีเป็น ${label} ใช่หรือไม่?`)) {
+    loadAdminAccounts(); // Revert back to original visually
+    return;
+  }
   const { ok, data } = await apiCall('/api.php?action=admin_set_account_type', 'POST', { id, account_type: newType });
   if (ok && data.success) {
     showToast(`เปลี่ยนเป็น ${label} เรียบร้อย`, 'success');
-    loadAdminAccounts();
+    loadAdminAccounts(); // Refresh to ensure data is synced
   } else {
     showToast(data.error || 'เกิดข้อผิดพลาด', 'error');
+    loadAdminAccounts(); // Revert back to original visually on error
   }
 }
 
