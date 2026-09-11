@@ -442,7 +442,7 @@ async function pollJobStatus() {
             </div>
 
             <div style="background:rgba(239,68,68,0.18);border-left:4px solid #ef4444;padding:12px 14px;border-radius:6px;font-size:12px;color:#fecaca;line-height:1.6;margin-bottom:16px;text-align:left;">
-              📌 <b>สรุปเหตุผล:</b> สถานะ <b>Inv (Invalid)</b> ใน Highspec หมายถึงลูกค้ามีการเปลี่ยนรหัสผ่าน Roblox ด้วยตนเอง หรือ Cookie หลุด/หมดอายุ ทำให้ระบบไม่สามารถเข้าถึงบัญชีได้ ต้องนำ Cookie ปัจจุบันของไอดีนี้มาอัปเดตใหม่ในระบบก่อนครับ
+              📌 <b>สรุปเหตุผล:</b> Cookie หมดอายุ / รหัสถูกเปลี่ยน (ติดต่อแอดมินส่ง ชื่อ:รหัส และรับการอัพเดทใหม่)
             </div>
 
             <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="font-size:13px;cursor:pointer;padding:10px 20px;font-weight:600;">
@@ -580,13 +580,13 @@ function getAccountStatusInfo(status) {
     };
   }
 
-  if (st === 'COOKIE_BROKEN' || st === 'INVALID' || st === 'INV' || st === 'WRONG_PASSWORD' || st === 'EXPIRED' || st === 'UNAUTHORIZED') {
+    if (st === 'COOKIE_BROKEN' || st === 'INVALID' || st === 'INV' || st === 'WRONG_PASSWORD' || st === 'EXPIRED' || st === 'UNAUTHORIZED') {
     return {
       cls: 'status-COOKIE_BROKEN',
-      text: 'Cookie แตก / เปลี่ยนรหัสผ่าน (Inv) 🔑',
-      title: 'สถานะ Inv (Cookie แตก หรือ เปลี่ยนรหัสผ่าน)',
-      desc: 'ลูกค้ามีการเปลี่ยนรหัสผ่าน Roblox หรือกดออกจากระบบ ทำให้ Cookie เดิมหมดอายุ ระบบไม่สามารถล็อกอินเข้าไปแก้แคปช่าได้',
-      solution: 'ต้องนำ Cookie หรือรหัสผ่านปัจจุบันของไอดีนี้มาอัปเดตใหม่ในระบบก่อนส่งแก้'
+      text: 'Cookie หมดอายุ 🔑',
+      title: 'Cookie หมดอายุ / รหัสถูกเปลี่ยน',
+      desc: 'ติดต่อแอดมินส่ง ชื่อ:รหัส และรับการอัพเดทใหม่',
+      solution: 'แอดมินจะทำการแก้ไขรหัสผ่านและคุกกี้ให้ใหม่'
     };
   }
 
