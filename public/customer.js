@@ -87,9 +87,9 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
         `เครดิตไม่พอ! ต้องการ ${data.credits_required} เครดิต (มีอยู่ ${data.credits_available} เครดิต) สำหรับ ${paidCount} บัญชีชำระเงิน`,
         'error'
       );
-      // Show topup section if available
-      const topupSection = document.getElementById('topupSection') || document.querySelector('[data-section="topup"]');
-      if (topupSection) topupSection.scrollIntoView({ behavior: 'smooth' });
+      // Switch to Topup section
+      if (typeof switchServiceTab === 'function') switchServiceTab('face');
+      if (typeof switchFaceSubTab === 'function') switchFaceSubTab('topup');
     } else {
       showToast(data.error || 'ไม่สามารถส่งงานได้ กรุณาติดต่อแอดมิน', 'error');
     }
