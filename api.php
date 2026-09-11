@@ -367,9 +367,46 @@ try {
                 $zpData = json_decode($raw, true) ?? [];
                 if ($httpCode === 200) {
                     $zpStatus = strtoupper($zpData['status'] ?? 'PENDING');
-                    $successCount = (int)($zpData['successful'] ?? 0);
+                    $successCount = (int)($zpData['solved'] ?? $zpData['successful'] ?? 0);
                     $skipCount = (int)($zpData['already_solved'] ?? 0);
-                    $failCount = (int)($zpData['failed'] ?? 0);
+                    $invalidCount = (int)($zpData['invalid_cookies'] ?? 0);
+                    $systemFailCount = (int)($zpData['failed'] ?? 0);
+                    $failCount = $invalidCount + $systemFailCount;
+
+                    $accountsDetail = [];
+                    $accList = $localJobCheck['accounts'] ?? [];
+                    
+                    // Distribute statuses to accounts based on counts
+                    $sC = $successCount;
+                    $skC = $skipCount;
+                    $iC = $invalidCount;
+                    $fC = $systemFailCount;
+
+                    foreach ($accList as $u) {
+                        if ($sC > 0) {
+                            $st = 'COMPLETED';
+                            $sC--;
+                        } elseif ($skC > 0) {
+                            $st = 'SKIP';
+                            $skC--;
+                        } elseif ($iC > 0) {
+                            $st = 'INVALID';
+                            $iC--;
+                        } elseif ($fC > 0) {
+                            $st = 'FAILED';
+                            $fC--;
+                        } else {
+                            $st = $zpStatus === 'COMPLETED' ? 'FAILED' : 'PENDING';
+                        }
+                        $accountsDetail[] = [
+                            'username' => $u,
+                            'status' => $st
+                        ];
+                        if ($st !== 'PENDING') {
+                            DB::updateAccountStatus($u, $st);
+                        }
+                    }
+
                     DB::updateJobStatus($id, [
                         'status' => $zpStatus,
                         'total_amount' => 0,
@@ -377,13 +414,9 @@ try {
                         'fail_amount' => 0,
                         'skip_amount' => 0,
                         'refunded_amount' => 0,
-                        'accounts_detail_json' => []
+                        'accounts_detail_json' => $accountsDetail
                     ]);
-                    if ($zpStatus === 'COMPLETED' && $failCount === 0 && !empty($localJobCheck['accounts'])) {
-                        foreach ($localJobCheck['accounts'] as $u) {
-                            DB::updateAccountStatus($u, 'COMPLETED');
-                        }
-                    }
+
                     jsonResponse([
                         'success' => true,
                         'data' => [
@@ -396,8 +429,8 @@ try {
                             'success_count' => $successCount,
                             'fail_count' => $failCount,
                             'skip_count' => $skipCount,
-                            'accounts' => $localJobCheck['accounts'] ?? [],
-                            'accounts_detail' => []
+                            'accounts' => $accList,
+                            'accounts_detail' => $accountsDetail
                         ]
                     ]);
                     } else { jsonResponse(['success' => false, 'error' => $zpData['error'] ?? 'Failed to connect to ZeroSolver'], $httpCode ?: 500); }
@@ -866,9 +899,45 @@ try {
                 $zpData = json_decode($raw, true) ?? [];
                 if ($httpCode === 200) {
                     $zpStatus = strtoupper($zpData['status'] ?? 'PENDING');
-                    $successCount = (int)($zpData['successful'] ?? 0);
+                    $successCount = (int)($zpData['solved'] ?? $zpData['successful'] ?? 0);
                     $skipCount = (int)($zpData['already_solved'] ?? 0);
-                    $failCount = (int)($zpData['failed'] ?? 0);
+                    $invalidCount = (int)($zpData['invalid_cookies'] ?? 0);
+                    $systemFailCount = (int)($zpData['failed'] ?? 0);
+                    $failCount = $invalidCount + $systemFailCount;
+
+                    $accountsDetail = [];
+                    $accList = $localJobCheck['accounts'] ?? [];
+                    
+                    $sC = $successCount;
+                    $skC = $skipCount;
+                    $iC = $invalidCount;
+                    $fC = $systemFailCount;
+
+                    foreach ($accList as $u) {
+                        if ($sC > 0) {
+                            $st = 'COMPLETED';
+                            $sC--;
+                        } elseif ($skC > 0) {
+                            $st = 'SKIP';
+                            $skC--;
+                        } elseif ($iC > 0) {
+                            $st = 'INVALID';
+                            $iC--;
+                        } elseif ($fC > 0) {
+                            $st = 'FAILED';
+                            $fC--;
+                        } else {
+                            $st = $zpStatus === 'COMPLETED' ? 'FAILED' : 'PENDING';
+                        }
+                        $accountsDetail[] = [
+                            'username' => $u,
+                            'status' => $st
+                        ];
+                        if ($st !== 'PENDING') {
+                            DB::updateAccountStatus($u, $st);
+                        }
+                    }
+
                     DB::updateJobStatus($id, [
                         'status' => $zpStatus,
                         'total_amount' => 0,
@@ -876,13 +945,9 @@ try {
                         'fail_amount' => 0,
                         'skip_amount' => 0,
                         'refunded_amount' => 0,
-                        'accounts_detail_json' => []
+                        'accounts_detail_json' => $accountsDetail
                     ]);
-                    if ($zpStatus === 'COMPLETED' && $failCount === 0 && !empty($localJobCheck['accounts'])) {
-                        foreach ($localJobCheck['accounts'] as $u) {
-                            DB::updateAccountStatus($u, 'COMPLETED');
-                        }
-                    }
+
                     jsonResponse([
                         'success' => true,
                         'data' => [
@@ -900,8 +965,8 @@ try {
                             'success_accounts' => $successCount,
                             'fail_accounts' => $failCount,
                             'skip_accounts' => $skipCount,
-                            'accounts_detail' => [],
-                            'accounts' => $localJobCheck['accounts'] ?? []
+                            'accounts_detail' => $accountsDetail,
+                            'accounts' => $accList
                         ]
                     ]);
                 }
