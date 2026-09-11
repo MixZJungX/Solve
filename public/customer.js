@@ -77,13 +77,8 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
       // External (paid) account requires member login
       showToast('บัญชีนี้เป็นประเภทชำระเงิน กรุณาเข้าสู่ระบบสมาชิกก่อน', 'error');
       // Open login modal if it exists
-      const modalAuth = document.getElementById('modalMemberAuth');
-      if (modalAuth) {
-        modalAuth.style.display = 'flex';
-        setTimeout(() => {
-          const loginTab = modalAuth.querySelector('[data-tab="login"]') || modalAuth.querySelector('.modal-tab-btn');
-          loginTab?.click();
-        }, 100);
+      if (typeof openMemberModal === 'function') {
+        openMemberModal('login');
       }
     } else if (data.insufficient_credits) {
       // Not enough credits
@@ -853,8 +848,8 @@ document.getElementById('formMemberRegister')?.addEventListener('submit', async 
       });
       const loginData = await loginRes.json();
       if (loginData.success) {
-        memberState = { loggedIn: true, status: loginData.status, email: loginData.email };
-        updateFaceUI();
+        showToast('สมัครสมาชิกและเข้าสู่ระบบสำเร็จ!', 'success');
+        setTimeout(() => location.reload(), 1000);
       }
     } else {
       showToast(data.error || 'สมัครสมาชิกไม่สำเร็จ', 'error');
@@ -888,10 +883,8 @@ document.getElementById('formMemberLogin')?.addEventListener('submit', async (e)
     });
     const data = await res.json();
     if (data.success) {
-      memberState = { loggedIn: true, status: data.status, email: data.email };
-      closeMemberModal();
-      updateFaceUI();
-      showToast('เข้าสู่ระบบสำเร็จ!', 'success');
+      showToast('เข้าสู่ระบบสำเร็จ! กำลังรีเฟรชหน้า...', 'success');
+      setTimeout(() => location.reload(), 1000);
     } else {
       showToast(data.error || 'อีเมลหรือรหัสผ่านไม่ถูกต้อง', 'error');
     }
