@@ -1152,7 +1152,8 @@ try {
             jsonResponse([
                 'success' => true,
                 'data' => [
-                    'face_scan_cost' => DB::getSetting('face_scan_cost', '1')
+                    'face_scan_cost' => DB::getSetting('face_scan_cost', '1'),
+                    'captcha_cost_per_account' => DB::getSetting('captcha_cost_per_account', '1')
                 ]
             ]);
             break;

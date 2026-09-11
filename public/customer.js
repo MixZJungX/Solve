@@ -741,6 +741,10 @@ async function loadSettings() {
       const costEl = document.getElementById('faceScanCostDisplay');
       if (costEl) costEl.textContent = currentFaceCost;
       updateFaceCreditsNeeded();
+      
+      const captchaCost = parseInt(data.data.captcha_cost_per_account || 1);
+      const captchaCostEl = document.getElementById('captchaCostDisplay');
+      if (captchaCostEl) captchaCostEl.textContent = captchaCost;
     }
   } catch (e) {}
 }
