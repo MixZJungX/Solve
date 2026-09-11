@@ -182,6 +182,10 @@ async function loadAdminSettings() {
       if (captchaProvEl && cfg.captcha_provider) {
         captchaProvEl.value = cfg.captcha_provider;
       }
+      const captchaCostEl = document.getElementById('settingCaptchaCost');
+      if (captchaCostEl && cfg.captcha_cost_per_account !== undefined) {
+        captchaCostEl.value = cfg.captcha_cost_per_account;
+      }
 
       // Queue mode radio
       const mode = cfg.queue_mode || 'normal';
@@ -216,6 +220,7 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
   const zsKey = document.getElementById('settingZsKey')?.value.trim() || '';
   const twPhone = document.getElementById('settingTwPhone')?.value.trim();
   const faceScanCost = document.getElementById('settingFaceScanCost')?.value.trim();
+  const captchaCost = document.getElementById('settingCaptchaCost')?.value.trim();
   const inwKey = document.getElementById('settingInwKey')?.value.trim();
 
   const autoApprove = document.getElementById('settingAutoApprove')?.value;
@@ -226,6 +231,7 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
   if (adminPass) payload.admin_password = adminPass;
   if (twPhone !== undefined) payload.tw_phone = twPhone;
   if (faceScanCost !== undefined) payload.face_scan_cost = faceScanCost;
+  if (captchaCost !== undefined) payload.captcha_cost_per_account = captchaCost;
   if (inwKey) payload.inw_api_key = inwKey;
   if (zsKey) payload.zerosolver_api_key = zsKey;
   if (autoApprove !== undefined) payload.auto_approve_members = autoApprove;
@@ -270,7 +276,7 @@ async function loadAdminAccounts(query = '') {
       if (adminAccounts.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="7" style="text-align:center;color:var(--text-muted);padding:36px;">
+            <td colspan="8" style="text-align:center;color:var(--text-muted);padding:36px;">
               ยังไม่มีบัญชีในระบบ กด "นำเข้าแบบ Combo" เพื่อเพิ่มบัญชี
             </td>
           </tr>
@@ -278,7 +284,12 @@ async function loadAdminAccounts(query = '') {
         return;
       }
 
-      tbody.innerHTML = adminAccounts.map((acc, i) => `
+      tbody.innerHTML = adminAccounts.map((acc, i) => {
+        const isShop = (acc.account_type || 'shop') === 'shop';
+        const typeBadge = isShop
+          ? `<span style="background:rgba(52,211,153,0.15);color:#34d399;border:1px solid rgba(52,211,153,0.3);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;" onclick="toggleAccountType(${acc.id}, 'shop')" title="คลิกเพื่อเปลี่ยนเป็น External">🏪 Shop</span>`
+          : `<span style="background:rgba(250,204,21,0.15);color:#facc15;border:1px solid rgba(250,204,21,0.3);padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;" onclick="toggleAccountType(${acc.id}, 'external')" title="คลิกเพื่อเปลี่ยนกลับเป็น Shop">💰 Paid</span>`;
+        return `
         <tr>
           <td style="color:var(--text-dim);font-family:var(--font-mono);font-size:12px;">${i + 1}</td>
           <td>
@@ -288,6 +299,7 @@ async function loadAdminAccounts(query = '') {
             </div>
             ${acc.note ? `<div style="font-size:11px;color:var(--text-muted);">${acc.note}</div>` : ''}
           </td>
+          <td>${typeBadge}</td>
           <td>
             <span class="mono" style="color:var(--text-muted);font-size:12px;">${acc.password ? '••••••••' : '-'}</span>
           </td>
@@ -301,11 +313,24 @@ async function loadAdminAccounts(query = '') {
           <td style="text-align:right;">
             <button class="btn btn-danger btn-sm" onclick="deleteAdminAccount(${acc.id}, '${acc.username}')" title="ลบ">🗑️ ลบ</button>
           </td>
-        </tr>
-      `).join('');
+        </tr>`;
+      }).join('');
     }
   } catch (e) {
     console.error(e);
+  }
+}
+
+async function toggleAccountType(id, currentType) {
+  const newType = currentType === 'shop' ? 'external' : 'shop';
+  const label = newType === 'shop' ? '🏪 Shop (ฟรี)' : '💰 Paid (ชำระเงิน)';
+  if (!confirm(`เปลี่ยนประเภทบัญชีเป็น ${label} ใช่หรือไม่?`)) return;
+  const { ok, data } = await apiCall('/api.php?action=admin_set_account_type', 'POST', { id, account_type: newType });
+  if (ok && data.success) {
+    showToast(`เปลี่ยนเป็น ${label} เรียบร้อย`, 'success');
+    loadAdminAccounts();
+  } else {
+    showToast(data.error || 'เกิดข้อผิดพลาด', 'error');
   }
 }
 

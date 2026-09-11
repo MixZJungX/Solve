@@ -73,6 +73,28 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
     if (res.ok && data.success) {
       showToast('ส่งงานสำเร็จ! กำลังเริ่มแก้แคปช่า...', 'success');
       startLiveTracking(data.data.job_id, data.data);
+    } else if (data.requires_login) {
+      // External (paid) account requires member login
+      showToast('บัญชีนี้เป็นประเภทชำระเงิน กรุณาเข้าสู่ระบบสมาชิกก่อน', 'error');
+      // Open login modal if it exists
+      const modalAuth = document.getElementById('modalMemberAuth');
+      if (modalAuth) {
+        modalAuth.style.display = 'flex';
+        setTimeout(() => {
+          const loginTab = modalAuth.querySelector('[data-tab="login"]') || modalAuth.querySelector('.modal-tab-btn');
+          loginTab?.click();
+        }, 100);
+      }
+    } else if (data.insufficient_credits) {
+      // Not enough credits
+      const paidCount = (data.paid_accounts || []).length;
+      showToast(
+        `เครดิตไม่พอ! ต้องการ ${data.credits_required} เครดิต (มีอยู่ ${data.credits_available} เครดิต) สำหรับ ${paidCount} บัญชีชำระเงิน`,
+        'error'
+      );
+      // Show topup section if available
+      const topupSection = document.getElementById('topupSection') || document.querySelector('[data-section="topup"]');
+      if (topupSection) topupSection.scrollIntoView({ behavior: 'smooth' });
     } else {
       showToast(data.error || 'ไม่สามารถส่งงานได้ กรุณาติดต่อแอดมิน', 'error');
     }

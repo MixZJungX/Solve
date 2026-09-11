@@ -143,28 +143,75 @@ try {
 
             // Fetch accounts from local DB
             $accountMap = DB::getAccountsByUsernames($usernames);
-            $missing = [];
-            $jobAccounts = [];
+
+            // Classify: shop accounts (free) vs external accounts (paid)
+            $shopAccounts     = [];
+            $externalAccounts = [];
+            $notInDb          = [];
 
             foreach ($usernames as $u) {
                 $lower = strtolower($u);
                 if (isset($accountMap[$lower])) {
-                    $jobAccounts[] = [
-                        'username' => $accountMap[$lower]['username'],
-                        'cookie' => $accountMap[$lower]['cookie']
-                    ];
+                    $acc = $accountMap[$lower];
+                    if (($acc['account_type'] ?? 'shop') === 'shop') {
+                        $shopAccounts[] = $acc;
+                    } else {
+                        $externalAccounts[] = $acc;
+                    }
                 } else {
-                    $missing[] = $u;
+                    $notInDb[] = $u;
                 }
             }
 
-            if (!empty($missing)) {
+            // Accounts not in DB cannot be submitted
+            if (!empty($notInDb)) {
                 jsonResponse([
                     'success' => false,
-                    'error' => 'ไม่พบบัญชีต่อไปนี้ในระบบของร้านค้า: ' . implode(', ', $missing) . ' (กรุณาแจ้งแอดมินเพื่อเพิ่มบัญชีก่อนครับ)',
-                    'missing_usernames' => $missing
+                    'error' => 'ไม่พบบัญชีต่อไปนี้ในระบบของร้านค้า: ' . implode(', ', $notInDb) . ' (กรุณาแจ้งแอดมินเพื่อเพิ่มบัญชีก่อนครับ)',
+                    'missing_usernames' => $notInDb
                 ], 404);
             }
+
+            // If there are external (paid) accounts, require member login + sufficient credits
+            if (!empty($externalAccounts)) {
+                if (empty($_SESSION['member_id'])) {
+                    jsonResponse([
+                        'success' => false,
+                        'requires_login' => true,
+                        'error' => 'บัญชีบางรายการเป็นประเภทชำระเงิน กรุณาเข้าสู่ระบบสมาชิกก่อน',
+                        'paid_accounts' => array_column($externalAccounts, 'username')
+                    ], 401);
+                }
+                $member = DB::getMemberById((int)$_SESSION['member_id']);
+                if (!$member || $member['status'] !== 'approved') {
+                    jsonResponse(['success' => false, 'requires_login' => true, 'error' => 'บัญชีสมาชิกยังไม่ได้รับการอนุมัติ'], 403);
+                }
+                $costPerAccount = (int)DB::getSetting('captcha_cost_per_account', '1');
+                $totalCost = count($externalAccounts) * $costPerAccount;
+                $currentCredits = DB::getMemberCredits((int)$_SESSION['member_id']);
+                if ($currentCredits < $totalCost) {
+                    jsonResponse([
+                        'success' => false,
+                        'insufficient_credits' => true,
+                        'error' => "เครดิตไม่พอ ต้องการ {$totalCost} เครดิต (มี {$currentCredits} เครดิต) สำหรับ " . count($externalAccounts) . " บัญชีชำระเงิน",
+                        'credits_required' => $totalCost,
+                        'credits_available' => $currentCredits,
+                        'paid_accounts' => array_column($externalAccounts, 'username')
+                    ], 402);
+                }
+                // Deduct credits before submitting
+                DB::deductMemberCredits((int)$_SESSION['member_id'], $totalCost);
+            }
+
+            // Build final job accounts list
+            $jobAccounts = [];
+            foreach (array_merge($shopAccounts, $externalAccounts) as $acc) {
+                $jobAccounts[] = [
+                    'username' => $acc['username'],
+                    'cookie'   => $acc['cookie']
+                ];
+            }
+            $usernames = array_column($jobAccounts, 'username');
 
             // Admin decides queue mode and provider
             $queueMode = DB::getSetting('queue_mode', 'normal');
@@ -548,6 +595,7 @@ try {
                     'inw_masked_key' => $inwMasked,
                     'auto_approve_members' => DB::getSetting('auto_approve_members', 'false'),
                     'captcha_provider' => DB::getSetting('captcha_provider', 'highspec'),
+                    'captcha_cost_per_account' => DB::getSetting('captcha_cost_per_account', '1'),
                 ]
             ]);
             break;
@@ -594,7 +642,26 @@ try {
                     DB::setSetting('inw_api_key', $inwKey);
                 }
             }
+            if (isset($input['captcha_cost_per_account'])) {
+                $captchaCost = max(1, (int)$input['captcha_cost_per_account']);
+                DB::setSetting('captcha_cost_per_account', (string)$captchaCost);
+            }
             jsonResponse(['success' => true, 'message' => 'บันทึกการตั้งค่าเรียบร้อยแล้ว']);
+            break;
+
+        case 'admin_set_account_type':
+            requireAdmin();
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $accId = (int)($input['id'] ?? 0);
+            $accType = trim($input['account_type'] ?? 'shop');
+            if ($accId <= 0) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุ ID บัญชี'], 400);
+            }
+            if (!in_array($accType, ['shop', 'external'])) {
+                jsonResponse(['success' => false, 'error' => 'ประเภทบัญชีไม่ถูกต้อง ต้องเป็น shop หรือ external'], 400);
+            }
+            DB::setAccountType($accId, $accType);
+            jsonResponse(['success' => true, 'message' => 'เปลี่ยนประเภทบัญชีเรียบร้อยแล้ว']);
             break;
 
         case 'get_balance':

@@ -37,6 +37,7 @@ class DB {
         $pdo->exec("INSERT INTO settings (key, value) VALUES ('tw_phone', '') ON CONFLICT (key) DO NOTHING");
         $pdo->exec("INSERT INTO settings (key, value) VALUES ('face_scan_cost', '1') ON CONFLICT (key) DO NOTHING");
         $pdo->exec("INSERT INTO settings (key, value) VALUES ('inw_api_key', '') ON CONFLICT (key) DO NOTHING");
+        $pdo->exec("INSERT INTO settings (key, value) VALUES ('captcha_cost_per_account', '1') ON CONFLICT (key) DO NOTHING");
 
         // Members table (for Face Unlock access control)
         $pdo->exec("CREATE TABLE IF NOT EXISTS members (
@@ -81,11 +82,15 @@ class DB {
             cookie TEXT NOT NULL,
             status TEXT DEFAULT 'ACTIVE',
             note TEXT DEFAULT '',
+            account_type TEXT DEFAULT 'shop',
             last_job_id TEXT DEFAULT '',
             last_status TEXT DEFAULT '',
             last_used_at TIMESTAMP DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )");
+
+        // Migrate existing accounts: add account_type column if not exist (existing rows become 'shop')
+        try { $pdo->exec("ALTER TABLE accounts ADD COLUMN account_type TEXT DEFAULT 'shop'"); } catch (\Exception $e) {}
 
         // Jobs table
         $pdo->exec("CREATE TABLE IF NOT EXISTS jobs (
@@ -144,24 +149,32 @@ class DB {
         return $map;
     }
 
-    public static function upsertAccount(string $username, string $cookie, string $password = '', string $note = ''): bool {
+    public static function upsertAccount(string $username, string $cookie, string $password = '', string $note = '', string $accountType = 'shop'): bool {
         $username = strtolower($username);
         $username = trim($username);
         $cookie = trim($cookie);
         $password = trim($password);
         $note = trim($note);
+        $accountType = in_array($accountType, ['shop', 'external']) ? $accountType : 'shop';
 
         if (empty($username) || empty($cookie)) return false;
 
         $stmt = self::get()->prepare("
-            INSERT INTO accounts (username, password, cookie, note)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO accounts (username, password, cookie, note, account_type)
+            VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(username) DO UPDATE SET
                 cookie = excluded.cookie,
                 password = CASE WHEN excluded.password != '' THEN excluded.password ELSE accounts.password END,
                 note = CASE WHEN excluded.note != '' THEN excluded.note ELSE accounts.note END
         ");
-        return $stmt->execute([$username, $password, $cookie, $note]);
+        // NOTE: account_type is NOT updated on conflict — preserving the original type
+        return $stmt->execute([$username, $password, $cookie, $note, $accountType]);
+    }
+
+    public static function setAccountType(int $id, string $accountType): bool {
+        $accountType = in_array($accountType, ['shop', 'external']) ? $accountType : 'shop';
+        $stmt = self::get()->prepare("UPDATE accounts SET account_type = ? WHERE id = ?");
+        return $stmt->execute([$accountType, $id]);
     }
 
     public static function getAccountsCount(): int {
@@ -175,7 +188,7 @@ class DB {
     public static function listAccounts(string $search = '', int $limit = 20000): array {
         if (!empty($search)) {
             $stmt = self::get()->prepare("
-                SELECT id, username, password, status, note, last_job_id, last_status, last_used_at, created_at,
+                SELECT id, username, password, status, note, account_type, last_job_id, last_status, last_used_at, created_at,
                        substr(cookie, 1, 30) || '...' as cookie_preview
                 FROM accounts
                 WHERE username LIKE ? OR note LIKE ?
@@ -185,7 +198,7 @@ class DB {
             $stmt->execute([$like, $like, $limit]);
         } else {
             $stmt = self::get()->prepare("
-                SELECT id, username, password, status, note, last_job_id, last_status, last_used_at, created_at,
+                SELECT id, username, password, status, note, account_type, last_job_id, last_status, last_used_at, created_at,
                        substr(cookie, 1, 30) || '...' as cookie_preview
                 FROM accounts
                 ORDER BY id DESC LIMIT ?
