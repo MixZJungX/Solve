@@ -155,7 +155,14 @@ async function loadAdminSettings() {
       if (twPhoneEl && cfg.tw_phone !== undefined) {
         twPhoneEl.value = cfg.tw_phone;
       }
-      const faceCostEl = document.getElementById('settingFaceScanCost');
+      
+        if (cfg.site_status) { const el = document.getElementById('settingSiteStatus'); if(el) el.value = cfg.site_status; }
+        if (cfg.link_guide) { const el = document.getElementById('settingLinkGuide'); if(el) el.value = cfg.link_guide; }
+        if (cfg.link_facebook) { const el = document.getElementById('settingLinkFacebook'); if(el) el.value = cfg.link_facebook; }
+        if (cfg.link_discord) { const el = document.getElementById('settingLinkDiscord'); if(el) el.value = cfg.link_discord; }
+        if (cfg.link_line) { const el = document.getElementById('settingLinkLine'); if(el) el.value = cfg.link_line; }
+
+        const faceCostEl = document.getElementById('settingFaceScanCost');
       if (faceCostEl && cfg.face_scan_cost !== undefined) {
         faceCostEl.value = cfg.face_scan_cost;
       }
@@ -236,6 +243,21 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
   if (zsKey) payload.zerosolver_api_key = zsKey;
   if (autoApprove !== undefined) payload.auto_approve_members = autoApprove;
   if (captchaProvider) payload.captcha_provider = captchaProvider;
+    const siteStatusEl = document.getElementById('settingSiteStatus');
+    if (siteStatusEl) payload.site_status = siteStatusEl.value;
+    
+    const guideEl = document.getElementById('settingLinkGuide');
+    if (guideEl) payload.link_guide = guideEl.value;
+    
+    const fbEl = document.getElementById('settingLinkFacebook');
+    if (fbEl) payload.link_facebook = fbEl.value;
+    
+    const dcEl = document.getElementById('settingLinkDiscord');
+    if (dcEl) payload.link_discord = dcEl.value;
+    
+    const lineEl = document.getElementById('settingLinkLine');
+    if (lineEl) payload.link_line = lineEl.value;
+
 
   const { ok, data } = await apiCall('/api.php?action=save_settings', 'POST', payload);
   if (ok && data.success) {
