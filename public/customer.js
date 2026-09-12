@@ -790,7 +790,6 @@ function updateFaceUI() {
     const emailEl = document.getElementById('memberEmailDisplay');
     if (emailEl) emailEl.textContent = email || '';
     loadMyCredits();
-    loadSettings();
   } else if (status === 'rejected') {
     rejectedBox.style.display = 'block';
   } else {
