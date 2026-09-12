@@ -983,3 +983,43 @@ tbody tr:hover {
   padding: 0;
   margin-bottom: 0;
 }
+
+/* ── Face Subpanes ── */
+.face-subpane { display: none; }
+.face-subpane.active { display: block; }
+
+/* ── Face Sub-Tabs ── */
+.face-subtabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: var(--panel-2);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 6px;
+}
+.face-subtab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.face-subtab-btn.active {
+  background: #1e2230;
+  color: var(--lemon);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+.face-subtab-btn:hover:not(.active) {
+  color: #fff;
+  background: rgba(255,255,255,0.05);
+}
