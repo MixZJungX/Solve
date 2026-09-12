@@ -10,10 +10,8 @@
     /* New Lemon UI Styles */
     body {
       font-family: 'Prompt', sans-serif;
-      background: radial-gradient(circle at center, #1e222c 0%, #0b0d10 100%);
+      background: url('bg_lemon.jpg') no-repeat center center fixed;
       background-size: cover;
-      background-position: center;
-      background-attachment: fixed;
       margin: 0;
       color: #fff;
       min-height: 100vh;
@@ -43,10 +41,7 @@
       align-items: center;
       gap: 8px;
     }
-    .nav-logo::before {
-      content: '🍋';
-      font-size: 24px;
-    }
+    /* Logo removed emoji */
     .nav-slogan {
       font-size: 11px;
       color: #9ba1ad;
@@ -294,7 +289,7 @@
   <!-- Navbar -->
   <nav class="lemon-navbar">
     <div class="nav-left">
-      <div class="nav-logo">Lemon shop</div>
+      <div class="nav-logo"><img src="logo_lemon.png" alt="Lemon Shop" style="height: 60px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));"></div>
       <div class="nav-slogan">Safe &middot; Fast &middot; Trusted</div>
     </div>
     <div class="nav-center" style="position:relative;">
