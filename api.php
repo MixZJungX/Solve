@@ -731,6 +731,11 @@ try {
             if (isset($input['link_discord'])) DB::setSetting('link_discord', trim($input['link_discord']));
             if (isset($input['link_line'])) DB::setSetting('link_line', trim($input['link_line']));
             if (isset($input['link_guide'])) DB::setSetting('link_guide', trim($input['link_guide']));
+              if (isset($input['status_facebook'])) DB::setSetting('status_facebook', trim($input['status_facebook']));
+              if (isset($input['status_discord'])) DB::setSetting('status_discord', trim($input['status_discord']));
+              if (isset($input['status_line'])) DB::setSetting('status_line', trim($input['status_line']));
+              if (isset($input['status_guide'])) DB::setSetting('status_guide', trim($input['status_guide']));
+
             jsonResponse(['success' => true, 'message' => 'บันทึกการตั้งค่าเรียบร้อยแล้ว']);
             break;
 

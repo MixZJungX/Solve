@@ -757,6 +757,15 @@ async function loadSettings() {
       
       if (data.data.link_line) document.getElementById('navLinkLine').href = data.data.link_line;
       if (data.data.status_line === '1') { document.getElementById('navLinkLine').style.display = 'block'; } else { document.getElementById('navLinkLine').style.display = 'none'; }
+      const contactBtn = document.getElementById('navContactBtn');
+      if (contactBtn) {
+        if (data.data.status_facebook === '1' || data.data.status_discord === '1' || data.data.status_line === '1') {
+          contactBtn.style.display = 'inline-block';
+        } else {
+          contactBtn.style.display = 'none';
+        }
+      }
+
 
     }
   } catch (e) {}
