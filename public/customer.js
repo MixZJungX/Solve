@@ -745,6 +745,12 @@ async function loadSettings() {
       const captchaCost = parseInt(data.data.captcha_cost_per_account || 1);
       const captchaCostEl = document.getElementById('captchaCostDisplay');
       if (captchaCostEl) captchaCostEl.textContent = captchaCost;
+      
+      if (data.data.link_guide) document.getElementById('navLinkGuide').href = data.data.link_guide;
+      if (data.data.link_facebook) { document.getElementById('navLinkFb').href = data.data.link_facebook; document.getElementById('navLinkFb').style.display = 'block'; } else { document.getElementById('navLinkFb').style.display = 'none'; }
+      if (data.data.link_discord) { document.getElementById('navLinkDc').href = data.data.link_discord; document.getElementById('navLinkDc').style.display = 'block'; } else { document.getElementById('navLinkDc').style.display = 'none'; }
+      if (data.data.link_line) { document.getElementById('navLinkLine').href = data.data.link_line; document.getElementById('navLinkLine').style.display = 'block'; } else { document.getElementById('navLinkLine').style.display = 'none'; }
+
     }
   } catch (e) {}
 }

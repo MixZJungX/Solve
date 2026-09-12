@@ -897,3 +897,89 @@ tbody tr:hover {
 .modal-close:hover {
   color: #fff;
 }
+
+/* Member Modal Tabs & Panes */
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--panel-border);
+  margin-bottom: 20px;
+}
+.modal-tab-btn {
+  flex: 1;
+  padding: 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.modal-tab-btn.active {
+  color: var(--lemon);
+  border-bottom-color: var(--lemon);
+}
+.modal-pane { display: none; }
+.modal-pane.active { display: block; }
+
+/* ── Member Auth Box ── */
+.member-auth-box {
+  text-align: center;
+  padding: 32px 20px;
+}
+.member-auth-box .auth-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+.member-auth-box h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.member-auth-box p {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
+.auth-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Member Info Bar ── */
+.member-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--panel-2);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+.member-bar .member-email { color: var(--lemon); font-weight: 600; }
+.member-bar .member-status-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.member-status-badge.approved { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+.member-status-badge.pending  { background: rgba(250,204,21,0.15); color: #facc15; border: 1px solid rgba(250,204,21,0.3); }
+.member-status-badge.rejected { background: rgba(239,68,68,0.15);  color: #ef4444; border: 1px solid rgba(239,68,68,0.3); }
+
+/* Remove double borders for specific auth boxes inside face pane */
+#faceAuthBox, #facePendingBox {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  margin-bottom: 0;
+}

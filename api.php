@@ -28,6 +28,39 @@ require_once __DIR__ . '/db.php';
 
 $action = $_GET['action'] ?? '';
 
+function processJobRefunds($id, $accountsDetail) {
+    $job = DB::getJob($id);
+    if (!$job || empty($job['member_id']) || empty($job['cost_per_account'])) return;
+    
+    $refundedSoFar = json_decode($job['refunded_usernames'] ?? '[]', true);
+    if (!is_array($refundedSoFar)) $refundedSoFar = [];
+    
+    $newRefunds = [];
+    foreach ($accountsDetail as $acc) {
+        $u = $acc['username'] ?? '';
+        $st = $acc['status'] ?? '';
+        if (in_array($st, ['FAILED', 'FAIL', 'ERROR', 'COOKIE_BROKEN', 'FACE_LOCK', 'FACELOCK', 'WRONG_PASSWORD', 'INVALID', 'INV', 'TWO_STEP', '2STEP', '2FA', 'BANNED', 'BAN'])) {
+            if (!in_array($u, $refundedSoFar)) {
+                $dbAcc = DB::getAccount($u);
+                if ($dbAcc && ($dbAcc['account_type'] ?? 'shop') === 'external') {
+                    $newRefunds[] = $u;
+                }
+            }
+        }
+    }
+    
+    if (!empty($newRefunds)) {
+        $totalRefund = count($newRefunds) * (int)$job['cost_per_account'];
+        DB::addMemberCredits((int)$job['member_id'], $totalRefund);
+        
+        $refundedSoFar = array_merge($refundedSoFar, $newRefunds);
+        
+        $pdo = DB::get();
+        $stmt = $pdo->prepare("UPDATE jobs SET refunded_usernames = ?, refunded_amount = refunded_amount + ? WHERE id = ?");
+        $stmt->execute([json_encode($refundedSoFar), $totalRefund, $id]);
+    }
+}
+
 function jsonResponse(array $data, int $code = 200): void {
     http_response_code($code);
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -265,7 +298,9 @@ try {
                         'total_accounts' => count($jobAccounts),
                         'total_amount' => 0,
                         'accounts' => $usernames,
-                        'raw' => $resZp
+                        'raw' => $resZp,
+                        'member_id' => $_SESSION['member_id'] ?? 0,
+                        'cost_per_account' => (int)DB::getSetting('captcha_cost_per_account', '1')
                     ]);
 
                     foreach ($usernames as $u) {
@@ -416,6 +451,7 @@ try {
                         'refunded_amount' => 0,
                         'accounts_detail_json' => $accountsDetail
                     ]);
+                    processJobRefunds($id, $accountsDetail);
 
                     jsonResponse([
                         'success' => true,
@@ -629,6 +665,11 @@ try {
                     'auto_approve_members' => DB::getSetting('auto_approve_members', 'false'),
                     'captcha_provider' => DB::getSetting('captcha_provider', 'highspec'),
                     'captcha_cost_per_account' => DB::getSetting('captcha_cost_per_account', '1'),
+                    'site_status' => DB::getSetting('site_status', 'online'),
+                    'link_facebook' => DB::getSetting('link_facebook', ''),
+                    'link_discord' => DB::getSetting('link_discord', ''),
+                    'link_line' => DB::getSetting('link_line', ''),
+                    'link_guide' => DB::getSetting('link_guide', ''),
                 ]
             ]);
             break;
@@ -679,6 +720,13 @@ try {
                 $captchaCost = max(1, (int)$input['captcha_cost_per_account']);
                 DB::setSetting('captcha_cost_per_account', (string)$captchaCost);
             }
+            if (isset($input['site_status'])) {
+                DB::setSetting('site_status', trim($input['site_status']));
+            }
+            if (isset($input['link_facebook'])) DB::setSetting('link_facebook', trim($input['link_facebook']));
+            if (isset($input['link_discord'])) DB::setSetting('link_discord', trim($input['link_discord']));
+            if (isset($input['link_line'])) DB::setSetting('link_line', trim($input['link_line']));
+            if (isset($input['link_guide'])) DB::setSetting('link_guide', trim($input['link_guide']));
             jsonResponse(['success' => true, 'message' => 'บันทึกการตั้งค่าเรียบร้อยแล้ว']);
             break;
 
@@ -947,6 +995,7 @@ try {
                         'refunded_amount' => 0,
                         'accounts_detail_json' => $accountsDetail
                     ]);
+                    processJobRefunds($id, $accountsDetail);
 
                     jsonResponse([
                         'success' => true,
@@ -1153,7 +1202,12 @@ try {
                 'success' => true,
                 'data' => [
                     'face_scan_cost' => DB::getSetting('face_scan_cost', '1'),
-                    'captcha_cost_per_account' => DB::getSetting('captcha_cost_per_account', '1')
+                    'captcha_cost_per_account' => DB::getSetting('captcha_cost_per_account', '1'),
+                    'site_status' => DB::getSetting('site_status', 'online'),
+                    'link_facebook' => DB::getSetting('link_facebook', '#'),
+                    'link_discord' => DB::getSetting('link_discord', '#'),
+                    'link_line' => DB::getSetting('link_line', '#'),
+                    'link_guide' => DB::getSetting('link_guide', '#')
                 ]
             ]);
             break;

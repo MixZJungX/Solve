@@ -92,6 +92,11 @@ class DB {
         // Migrate existing accounts: add account_type column if not exist (existing rows become 'shop')
         try { $pdo->exec("ALTER TABLE accounts ADD COLUMN account_type TEXT DEFAULT 'shop'"); } catch (\Exception $e) {}
 
+        // Migrate jobs table for refunds
+        try { $pdo->exec("ALTER TABLE jobs ADD COLUMN member_id INTEGER DEFAULT 0"); } catch (\Exception $e) {}
+        try { $pdo->exec("ALTER TABLE jobs ADD COLUMN cost_per_account INTEGER DEFAULT 0"); } catch (\Exception $e) {}
+        try { $pdo->exec("ALTER TABLE jobs ADD COLUMN refunded_usernames TEXT DEFAULT '[]'"); } catch (\Exception $e) {}
+
         // Jobs table
         $pdo->exec("CREATE TABLE IF NOT EXISTS jobs (
             id TEXT PRIMARY KEY,
@@ -215,8 +220,8 @@ class DB {
 
     public static function saveJob(array $data): bool {
         $stmt = self::get()->prepare("
-            INSERT INTO jobs (id, service, status, priority, note, total_accounts, total_amount, accounts_json, raw_response, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            INSERT INTO jobs (id, service, status, priority, note, total_accounts, total_amount, accounts_json, raw_response, member_id, cost_per_account, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
             ON CONFLICT(id) DO UPDATE SET
                 status = excluded.status,
                 total_accounts = excluded.total_accounts,
@@ -232,7 +237,9 @@ class DB {
             $data['total_accounts'] ?? 0,
             $data['total_amount'] ?? 0,
             json_encode($data['accounts'] ?? [], JSON_UNESCAPED_UNICODE),
-            json_encode($data['raw'] ?? [], JSON_UNESCAPED_UNICODE)
+            json_encode($data['raw'] ?? [], JSON_UNESCAPED_UNICODE),
+            $data['member_id'] ?? 0,
+            $data['cost_per_account'] ?? 0
         ]);
     }
 

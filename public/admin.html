@@ -112,6 +112,31 @@
 
             <hr style="border:none;border-top:1px solid var(--panel-border);margin:24px 0;" />
 
+            <div class="form-group" style="background:var(--panel-2); padding:16px; border-radius:8px; border:1px solid var(--panel-border);">
+              <h4 style="margin-top:0; margin-bottom:12px; color:var(--lemon);">ลิงก์ติดต่อและสถานะเว็บไซต์</h4>
+
+              <label class="form-label">สถานะเว็บไซต์ (สำหรับลูกค้า)</label>
+              <select id="settingSiteStatus" style="margin-bottom:16px; width:100%; padding:8px; border-radius:4px; border:1px solid var(--panel-border); background:var(--panel-3); color:#fff;">
+                <option value="online">🟢 เปิดให้บริการ (Online)</option>
+                <option value="maintenance">🔴 ปิดปรับปรุง (Maintenance)</option>
+              </select>
+
+              
+              <label class="form-label">ลิงก์วิธีใช้งาน (Guide Link)</label>
+              <input type="text" id="settingLinkGuide" placeholder="https://..." style="margin-bottom:12px; width:100%; padding:8px; border-radius:4px; border:1px solid var(--panel-border); background:var(--panel-3); color:#fff;" />
+
+              <label class="form-label">ลิงก์ติดต่อ Facebook</label>
+              <input type="text" id="settingLinkFacebook" placeholder="https://..." style="margin-bottom:12px; width:100%; padding:8px; border-radius:4px; border:1px solid var(--panel-border); background:var(--panel-3); color:#fff;" />
+
+              <label class="form-label">ลิงก์ติดต่อ Discord</label>
+              <input type="text" id="settingLinkDiscord" placeholder="https://..." style="margin-bottom:12px; width:100%; padding:8px; border-radius:4px; border:1px solid var(--panel-border); background:var(--panel-3); color:#fff;" />
+
+              <label class="form-label">ลิงก์ติดต่อ Line</label>
+              <input type="text" id="settingLinkLine" placeholder="https://..." style="width:100%; padding:8px; border-radius:4px; border:1px solid var(--panel-border); background:var(--panel-3); color:#fff;" />
+            </div>
+
+            <hr style="border:none;border-top:1px solid var(--panel-border);margin:24px 0;" />
+
             <div class="form-group">
               <label class="form-label" for="settingApiKey">HIGHSPEC API Key ของทางร้าน:</label>
               <div class="form-desc">API Key ที่ใช้สำหรับตัดเงินและยิงงาน (ขึ้นต้นด้วย <code>hsk_</code>)</div>
