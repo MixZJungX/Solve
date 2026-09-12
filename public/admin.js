@@ -161,6 +161,12 @@ async function loadAdminSettings() {
         if (cfg.link_facebook) { const el = document.getElementById('settingLinkFacebook'); if(el) el.value = cfg.link_facebook; }
         if (cfg.link_discord) { const el = document.getElementById('settingLinkDiscord'); if(el) el.value = cfg.link_discord; }
         if (cfg.link_line) { const el = document.getElementById('settingLinkLine'); if(el) el.value = cfg.link_line; }
+        
+        const setStatus = (id, val) => { const el = document.getElementById(id); if (el) el.checked = (val === '1'); };
+        setStatus('statusGuide', cfg.status_guide);
+        setStatus('statusFacebook', cfg.status_facebook);
+        setStatus('statusDiscord', cfg.status_discord);
+        setStatus('statusLine', cfg.status_line);
 
         const faceCostEl = document.getElementById('settingFaceScanCost');
       if (faceCostEl && cfg.face_scan_cost !== undefined) {
@@ -257,6 +263,12 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
     
     const lineEl = document.getElementById('settingLinkLine');
     if (lineEl) payload.link_line = lineEl.value;
+    
+    const getStatus = (id) => { const el = document.getElementById(id); return (el && el.checked) ? '1' : '0'; };
+    payload.status_guide = getStatus('statusGuide');
+    payload.status_facebook = getStatus('statusFacebook');
+    payload.status_discord = getStatus('statusDiscord');
+    payload.status_line = getStatus('statusLine');
 
 
   const { ok, data } = await apiCall('/api.php?action=save_settings', 'POST', payload);

@@ -747,9 +747,16 @@ async function loadSettings() {
       if (captchaCostEl) captchaCostEl.textContent = captchaCost;
       
       if (data.data.link_guide) document.getElementById('navLinkGuide').href = data.data.link_guide;
-      if (data.data.link_facebook) { document.getElementById('navLinkFb').href = data.data.link_facebook; document.getElementById('navLinkFb').style.display = 'block'; } else { document.getElementById('navLinkFb').style.display = 'none'; }
-      if (data.data.link_discord) { document.getElementById('navLinkDc').href = data.data.link_discord; document.getElementById('navLinkDc').style.display = 'block'; } else { document.getElementById('navLinkDc').style.display = 'none'; }
-      if (data.data.link_line) { document.getElementById('navLinkLine').href = data.data.link_line; document.getElementById('navLinkLine').style.display = 'block'; } else { document.getElementById('navLinkLine').style.display = 'none'; }
+      if (data.data.status_guide === '1') { document.getElementById('navLinkGuide').style.display = 'inline-block'; } else { document.getElementById('navLinkGuide').style.display = 'none'; }
+      
+      if (data.data.link_facebook) document.getElementById('navLinkFb').href = data.data.link_facebook;
+      if (data.data.status_facebook === '1') { document.getElementById('navLinkFb').style.display = 'block'; } else { document.getElementById('navLinkFb').style.display = 'none'; }
+      
+      if (data.data.link_discord) document.getElementById('navLinkDc').href = data.data.link_discord;
+      if (data.data.status_discord === '1') { document.getElementById('navLinkDc').style.display = 'block'; } else { document.getElementById('navLinkDc').style.display = 'none'; }
+      
+      if (data.data.link_line) document.getElementById('navLinkLine').href = data.data.link_line;
+      if (data.data.status_line === '1') { document.getElementById('navLinkLine').style.display = 'block'; } else { document.getElementById('navLinkLine').style.display = 'none'; }
 
     }
   } catch (e) {}

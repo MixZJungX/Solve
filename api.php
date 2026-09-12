@@ -670,6 +670,10 @@ try {
                     'link_discord' => DB::getSetting('link_discord', ''),
                     'link_line' => DB::getSetting('link_line', ''),
                     'link_guide' => DB::getSetting('link_guide', ''),
+                    'status_facebook' => DB::getSetting('status_facebook', '0'),
+                    'status_discord' => DB::getSetting('status_discord', '0'),
+                    'status_line' => DB::getSetting('status_line', '0'),
+                    'status_guide' => DB::getSetting('status_guide', '0'),
                 ]
             ]);
             break;
@@ -1207,7 +1211,11 @@ try {
                     'link_facebook' => DB::getSetting('link_facebook', '#'),
                     'link_discord' => DB::getSetting('link_discord', '#'),
                     'link_line' => DB::getSetting('link_line', '#'),
-                    'link_guide' => DB::getSetting('link_guide', '#')
+                    'link_guide' => DB::getSetting('link_guide', '#'),
+                    'status_facebook' => DB::getSetting('status_facebook', '0'),
+                    'status_discord' => DB::getSetting('status_discord', '0'),
+                    'status_line' => DB::getSetting('status_line', '0'),
+                    'status_guide' => DB::getSetting('status_guide', '0')
                 ]
             ]);
             break;
