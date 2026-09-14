@@ -176,6 +176,33 @@ try {
 
 
         // ===================== CUSTOMER ACTIONS (PUBLIC) =====================
+        case 'validate_accounts':
+            session_write_close();
+            $input = json_decode(file_get_contents('php://input'), true);
+            $rawUsernames = $input['usernames'] ?? [];
+            if (is_string($rawUsernames)) {
+                $rawUsernames = preg_split("/[\r\n,]+/", $rawUsernames);
+            }
+            $usernamesToQuery = [];
+            foreach ($rawUsernames as $line) {
+                if (strpos($line, ':') !== false) {
+                    list($u, $p) = explode(':', $line, 2);
+                    $u = trim($u);
+                } else {
+                    $u = trim($line);
+                }
+                if ($u !== '') $usernamesToQuery[] = strtolower($u);
+            }
+            if (empty($usernamesToQuery)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละครอย่างน้อย 1 บัญชี'], 400);
+            }
+            $dbAccounts = getAccountsByUsernames($usernamesToQuery);
+            if (empty($dbAccounts)) {
+                jsonResponse(['success' => false, 'error' => 'ไม่พบบัญชีต่อไปนี้ในระบบ: ' . implode(', ', $usernamesToQuery)], 404);
+            }
+            jsonResponse(['success' => true]);
+            break;
+
         case 'customer_submit':
             session_write_close();
             $input = json_decode(file_get_contents('php://input'), true);
