@@ -278,6 +278,7 @@ try {
                 require_once __DIR__ . '/zp_helpers.php';
                 $newCookies = zp_get_cookies($getKey, $needsGet, $traceId);
                 if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
+                $failedGets = [];
                 foreach ($needsGet as $lu => $p) {
                     if (isset($newCookies[$lu])) {
                         DB::upsertAccount(
@@ -293,7 +294,13 @@ try {
                             'cookie' => $newCookies[$lu]['cookie'],
                             'account_type' => 'external'
                         ];
+                    } else {
+                        $failedGets[] = $parsedRequests[$lu]['username'];
+                        unset($accountMap[$lu]);
                     }
+                }
+                if (!empty($failedGets)) {
+                    jsonResponse(['success' => false, 'error' => 'ดึงคุกกี้ใหม่ล้มเหลวที่บัญชี: ' . implode(', ', $failedGets) . ' (รหัสผ่านอาจผิด หรือระบบ Roblox มีปัญหา)'], 400);
                 }
             }
             
@@ -1484,6 +1491,7 @@ try {
                     require_once __DIR__ . '/zp_helpers.php';
                     $newCookies = zp_get_cookies($getKey, $needsGet, $traceId);
                 if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
+                    $failedGets = [];
                     foreach ($needsGet as $lu => $p) {
                         if (isset($newCookies[$lu])) {
                             DB::upsertAccount(
@@ -1500,7 +1508,12 @@ try {
                             ];
                         } else {
                             $notFound[] = $parsedRequests[$lu]['username'];
+                            $failedGets[] = $parsedRequests[$lu]['username'];
+                            unset($accountMap[$lu]);
                         }
+                    }
+                    if (!empty($failedGets)) {
+                        jsonResponse(['success' => false, 'error' => 'ดึงคุกกี้ใหม่ล้มเหลวที่บัญชี: ' . implode(', ', $failedGets) . ' (รหัสผ่านอาจผิด หรือระบบ Roblox มีปัญหา)'], 400);
                     }
                 }
             }
