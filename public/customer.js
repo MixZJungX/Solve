@@ -84,7 +84,7 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
   section.style.display = 'block';
   section.scrollIntoView({ behavior: 'smooth', block: 'start' });
   document.getElementById('custJobId').textContent = 'กำลังเตรียมการ...';
-  document.getElementById('custTotal').textContent = usernames.split('\n').filter(r => r.trim()).length;
+  document.getElementById('custTotal').textContent = usernames.length;
   document.getElementById('custProgressBar').style.width = '10%';
   document.getElementById('custProgressPercent').textContent = '10%';
   document.getElementById('custProgressStage').textContent = 'กำลังจัดการคุกกี้...';
