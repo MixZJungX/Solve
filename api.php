@@ -26,6 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/db.php';
 
+function maskString($str) {
+    if (empty($str)) return '';
+    $len = strlen($str);
+    if ($len <= 8) return str_repeat('*', $len);
+    return substr($str, 0, 4) . str_repeat('*', $len - 8) . substr($str, -4);
+}
+
+
 $action = $_GET['action'] ?? '';
 
 function processJobRefunds($id, $accountsDetail) {
