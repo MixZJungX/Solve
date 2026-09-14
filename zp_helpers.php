@@ -12,6 +12,8 @@ function zp_check_cookies($checkerKey, $cookiesMap) {
     
     $ch = curl_init('https://zeropoint.to/api/cookie-checker-api/submit');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['cookies' => implode("\n", $payload)]));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -41,6 +43,8 @@ function zp_check_cookies($checkerKey, $cookiesMap) {
         sleep(2);
         $ch = curl_init('https://zeropoint.to/api/cookie-checker-api/status/' . $sessionId);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'X-API-Key: ' . $checkerKey,
             'User-Agent: Mozilla/5.0'
@@ -58,6 +62,8 @@ function zp_check_cookies($checkerKey, $cookiesMap) {
                     if (!empty($data[$countKey]) && $data[$countKey] > 0) {
                         $ch2 = curl_init('https://zeropoint.to/api/cookie-checker-api/download/' . $sessionId . '/' . $type);
                         curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch2, CURLOPT_SSL_VERIFYPEER, false);
+                        curl_setopt($ch2, CURLOPT_SSL_VERIFYHOST, 0);
                         curl_setopt($ch2, CURLOPT_HTTPHEADER, [
                             'X-API-Key: ' . $checkerKey,
                             'User-Agent: Mozilla/5.0'
@@ -99,6 +105,8 @@ function zp_get_cookies($getKey, $passwordsMap) {
     
     $ch = curl_init('https://zeropoint.to/api/getcookie-api/submit');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode(['accounts' => implode("\n", $payload)]));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
@@ -128,6 +136,8 @@ function zp_get_cookies($getKey, $passwordsMap) {
         sleep(2);
         $ch = curl_init('https://zeropoint.to/api/getcookie-api/status/' . $jobId);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'X-API-Key: ' . $getKey,
             'User-Agent: Mozilla/5.0'
@@ -150,6 +160,8 @@ function zp_get_cookies($getKey, $passwordsMap) {
                     if ($cookieFile) {
                         $ch2 = curl_init('https://zeropoint.to/api/getcookie-api/download/' . $jobId . '/' . $cookieFile);
                         curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+                        curl_setopt($ch2, CURLOPT_SSL_VERIFYPEER, false);
+                        curl_setopt($ch2, CURLOPT_SSL_VERIFYHOST, 0);
                         curl_setopt($ch2, CURLOPT_HTTPHEADER, [
                             'X-API-Key: ' . $getKey,
                             'User-Agent: Mozilla/5.0'
