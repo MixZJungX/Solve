@@ -59,6 +59,24 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
   btn.disabled = true;
   btn.innerHTML = '<span>⏳</span><span id="submitStatusText">กำลังตรวจสอบไอดีในระบบ...</span>';
 
+  try {
+      const valRes = await fetch('/api.php?action=validate_accounts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usernames: text })
+      });
+      const valData = await valRes.json();
+      if (!valRes.ok || !valData.success) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>🚀</span><span>เริ่มแก้แคปช่าทันที (Solve Captcha)</span>';
+          return showToast(valData.error || 'ไม่พบบัญชีนี้ในระบบ', 'error');
+      }
+  } catch (err) {
+      btn.disabled = false;
+      btn.innerHTML = '<span>🚀</span><span>เริ่มแก้แคปช่าทันที (Solve Captcha)</span>';
+      return showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');
+  }
+
   const traceId = Date.now() + '_' + Math.random().toString(36).substring(2);
   
   // Show progress section immediately
