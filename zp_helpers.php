@@ -95,7 +95,7 @@ function zp_check_cookies($checkerKey, $cookiesMap) {
     return array_values(array_unique($deadUsers));
 }
 
-function zp_get_cookies($getKey, $passwordsMap) {
+function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
     if (empty($passwordsMap)) return [];
     
     $payload = [];
@@ -148,6 +148,14 @@ function zp_get_cookies($getKey, $passwordsMap) {
         
         if ($status === 200) {
             $data = json_decode($res, true);
+            if ($traceId && isset($data['status'])) {
+                $statusTxt = $data['status'];
+                if ($statusTxt === 'processing' || $statusTxt === 'pending') {
+                    $completed = $data['completed'] ?? 0;
+                    $total = $data['total'] ?? count($passwordsMap);
+                    updateTrace($traceId, "กำลังหมุนดึงคุกกี้ใหม่ (ZP: {$statusTxt} - {$completed}/{$total})...");
+                }
+            }
             if ($data['status'] === 'completed' || $data['status'] === 'failed' || $data['status'] === 'cancelled') {
                 if (!empty($data['result_files'])) {
                     $cookieFile = null;

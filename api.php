@@ -276,7 +276,7 @@ try {
             $getKey = DB::getSetting('zp_getcookie_key', '');
             if (!empty($needsGet) && !empty($getKey)) {
                 require_once __DIR__ . '/zp_helpers.php';
-                $newCookies = zp_get_cookies($getKey, $needsGet);
+                $newCookies = zp_get_cookies($getKey, $needsGet, $traceId);
                 if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
                 foreach ($needsGet as $lu => $p) {
                     if (isset($newCookies[$lu])) {
@@ -1482,7 +1482,7 @@ try {
                     $needsGet = [];
                 } else {
                     require_once __DIR__ . '/zp_helpers.php';
-                    $newCookies = zp_get_cookies($getKey, $needsGet);
+                    $newCookies = zp_get_cookies($getKey, $needsGet, $traceId);
                 if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
                     foreach ($needsGet as $lu => $p) {
                         if (isset($newCookies[$lu])) {
