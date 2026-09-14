@@ -60,13 +60,40 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
   btn.innerHTML = '<span>⏳</span><span id="submitStatusText">กำลังตรวจสอบไอดีในระบบ...</span>';
 
   const traceId = Date.now() + '_' + Math.random().toString(36).substring(2);
+  
+  // Show progress section immediately
+  const section = document.getElementById('customerJobSection');
+  section.style.display = 'block';
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  document.getElementById('custJobId').textContent = 'กำลังเตรียมการ...';
+  document.getElementById('custTotal').textContent = usernames.split('\n').filter(r => r.trim()).length;
+  document.getElementById('custProgressBar').style.width = '10%';
+  document.getElementById('custProgressPercent').textContent = '10%';
+  document.getElementById('custProgressStage').textContent = 'กำลังจัดการคุกกี้...';
+  document.getElementById('custProgressHint').textContent = 'ตรวจสอบสถานะ & เตรียมข้อมูล...';
+  document.getElementById('custFinishMsg').style.display = 'none';
+
+  let traceProgress = 10;
   const statusInterval = setInterval(async () => {
     try {
         const traceRes = await fetch('/api.php?action=get_trace&trace_id=' + traceId);
         const traceData = await traceRes.json();
         if (traceData.success && traceData.status_text) {
+            // Update button
             const span = document.getElementById('submitStatusText');
             if (span) span.innerText = traceData.status_text;
+            
+            // Update Progress bar
+            document.getElementById('custProgressHint').textContent = traceData.status_text;
+            if (traceData.status_text.includes('ดึงคุกกี้ใหม่') || traceData.status_text.includes('ขอคุกกี้ใหม่')) {
+                traceProgress = 30;
+            } else if (traceData.status_text.includes('คุกกี้ทุกบัญชีใช้งานได้')) {
+                traceProgress = 40;
+            } else if (traceData.status_text.includes('ส่งงาน')) {
+                traceProgress = 45;
+            }
+            document.getElementById('custProgressBar').style.width = traceProgress + '%';
+            document.getElementById('custProgressPercent').textContent = traceProgress + '%';
         }
     } catch(e) {}
   }, 2000);
