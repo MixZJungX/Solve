@@ -163,6 +163,7 @@ function callHighspec(string $endpoint, string $method = 'GET', ?array $payload 
 try {
     switch ($action) {
         case 'get_trace':
+            session_write_close();
             $traceId = $_GET['trace_id'] ?? '';
             if ($traceId) {
                 $file = __DIR__ . '/data/traces/' . preg_replace('/[^a-zA-Z0-9_]/', '', $traceId) . '.txt';
@@ -176,6 +177,7 @@ try {
 
         // ===================== CUSTOMER ACTIONS (PUBLIC) =====================
         case 'customer_submit':
+            session_write_close();
             $input = json_decode(file_get_contents('php://input'), true);
             $traceId = $input['trace_id'] ?? null;
             $rawUsernames = $input['usernames'] ?? [];
