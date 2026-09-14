@@ -160,31 +160,96 @@ try {
             $input = json_decode(file_get_contents('php://input'), true);
             $rawUsernames = $input['usernames'] ?? [];
             if (is_string($rawUsernames)) {
-                $rawUsernames = preg_split("/[\r\n,]+/", $rawUsernames);
+                $rawUsernames = preg_split("/[
+
+,]+/", $rawUsernames);
             }
 
-            $usernames = [];
-            foreach ($rawUsernames as $u) {
-                $trimmed = trim($u);
-                if (!empty($trimmed)) {
-                    $usernames[] = $trimmed;
+            $parsedRequests = [];
+            $usernamesToQuery = [];
+            foreach ($rawUsernames as $line) {
+                if (strpos($line, ':') !== false) {
+                    list($u, $p) = explode(':', $line, 2);
+                    $u = trim($u); $p = trim($p);
+                } else {
+                    $u = trim($line); $p = null;
                 }
+                if ($u === '') continue;
+                $parsedRequests[strtolower($u)] = ['username' => $u, 'password' => $p];
+                $usernamesToQuery[] = strtolower($u);
             }
-            $usernames = array_values(array_unique($usernames));
+            $usernamesToQuery = array_values(array_unique($usernamesToQuery));
 
-            if (empty($usernames)) {
-                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อบัญชี (Username) อย่างน้อย 1 ชื่อ'], 400);
+            if (empty($usernamesToQuery)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละคร (Username) อย่างน้อย 1 บัญชี'], 400);
             }
 
             // Check shop API key
             $apiKey = getApiKey();
             if (empty($apiKey)) {
-                jsonResponse(['success' => false, 'error' => 'ระบบยังไม่พร้อมให้บริการ กรุณาแจ้งแอดมินร้านค้า'], 503);
+                jsonResponse(['success' => false, 'error' => 'ระบบหลังบ้านไม่ได้ตั้งค่า API กรุณาติดต่อแอดมิน'], 503);
             }
 
             // Fetch accounts from local DB
-            $accountMap = DB::getAccountsByUsernames($usernames);
+            $accountMap = DB::getAccountsByUsernames($usernamesToQuery);
+            
+            // --- AUTO HEAL COOKIES FOR CAPTCHA ---
+            $needsCheck = [];
+            $needsGet = [];
+            
+            foreach ($parsedRequests as $lu => $req) {
+                $acc = $accountMap[$lu] ?? null;
+                if ($acc && !empty($acc['cookie'])) {
+                    $needsCheck[$lu] = $acc['cookie'];
+                } else if ($req['password'] !== null && $req['password'] !== '') {
+                    $needsGet[$lu] = $req['password'];
+                }
+            }
 
+            $checkerKey = DB::getSetting('zp_checker_key', '');
+            if (!empty($needsCheck) && !empty($checkerKey)) {
+                require_once __DIR__ . '/zp_helpers.php';
+                $deadUsers = zp_check_cookies($checkerKey, $needsCheck);
+                foreach ($deadUsers as $lu) {
+                    if (!empty($parsedRequests[$lu]['password'])) {
+                        $needsGet[$lu] = $parsedRequests[$lu]['password'];
+                    }
+                    unset($needsCheck[$lu]);
+                    if (empty($parsedRequests[$lu]['password'])) {
+                        unset($accountMap[$lu]); 
+                    }
+                }
+            }
+
+            $getKey = DB::getSetting('zp_getcookie_key', '');
+            if (!empty($needsGet) && !empty($getKey)) {
+                require_once __DIR__ . '/zp_helpers.php';
+                $newCookies = zp_get_cookies($getKey, $needsGet);
+                foreach ($needsGet as $lu => $p) {
+                    if (isset($newCookies[$lu])) {
+                        DB::upsertAccount(
+                            $parsedRequests[$lu]['username'],
+                            $newCookies[$lu]['cookie'],
+                            $newCookies[$lu]['password'],
+                            '',
+                            'external'
+                        );
+                        $accountMap[$lu] = [
+                            'username' => $parsedRequests[$lu]['username'],
+                            'password' => $newCookies[$lu]['password'],
+                            'cookie' => $newCookies[$lu]['cookie'],
+                            'account_type' => 'external'
+                        ];
+                    }
+                }
+            }
+            
+            // Re-build $usernames for the next section which expects original case usernames
+            $usernames = [];
+            foreach ($parsedRequests as $req) {
+                $usernames[] = $req['username'];
+            }
+            
             // Classify: shop accounts (free) vs external accounts (paid)
             $shopAccounts     = [];
             $externalAccounts = [];
@@ -1278,40 +1343,117 @@ try {
 
         case 'face_submit':
             if (empty($_SESSION['member_id'])) {
-                jsonResponse(['success' => false, 'error' => 'กรุณาเข้าสู่ระบบสมาชิกก่อน'], 401);
+                jsonResponse(['success' => false, 'error' => 'กรุณาเข้าสู่ระบบก่อนใช้งาน'], 401);
             }
             $member = DB::getMemberById((int)$_SESSION['member_id']);
             if (!$member || $member['status'] !== 'approved') {
-                jsonResponse(['success' => false, 'error' => 'บัญชีสมาชิกยังไม่ได้รับการอนุมัติ'], 403);
+                jsonResponse(['success' => false, 'error' => 'สมาชิกของคุณยังไม่ได้รับการอนุมัติ'], 403);
             }
 
             $zpKey = DB::getSetting('zp_api_key', '');
             if (empty($zpKey)) {
-                jsonResponse(['success' => false, 'error' => 'ยังไม่ได้ตั้งค่า ZeroPoint API Key กรุณาติดต่อแอดมิน'], 503);
+                jsonResponse(['success' => false, 'error' => 'ระบบยังไม่ได้ตั้งค่า ZeroPoint API Key กรุณาติดต่อแอดมิน'], 503);
             }
 
             $body = json_decode(file_get_contents('php://input'), true) ?? [];
-            $usernames = array_filter(array_map('trim', (array)($body['usernames'] ?? [])));
-            if (empty($usernames)) {
-                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละครอย่างน้อย 1 ชื่อ'], 400);
+            $input_lines = array_filter(array_map('trim', (array)($body['usernames'] ?? [])));
+            if (empty($input_lines)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละครอย่างน้อย 1 ตัว'], 400);
             }
 
-            // Fetch accounts from DB to build cookie strings
-            $accountMap = DB::getAccountsByUsernames(array_values($usernames));
-            $notFound = [];
-            $lines = [];
-            foreach ($usernames as $u) {
-                $acc = $accountMap[strtolower($u)] ?? null;
-                if (!$acc) {
-                    $notFound[] = $u;
-                    continue;
+            // 1. Parse Input
+            $parsedRequests = [];
+            $usernamesToQuery = [];
+            foreach ($input_lines as $line) {
+                if (strpos($line, ':') !== false) {
+                    list($u, $p) = explode(':', $line, 2);
+                    $u = trim($u); $p = trim($p);
+                } else {
+                    $u = trim($line); $p = null;
                 }
-                $pass = !empty($acc['password']) ? $acc['password'] : 'unknown';
-                $lines[] = $acc['username'] . ':' . $pass . ':' . $acc['cookie'];
+                if ($u === '') continue;
+                $parsedRequests[strtolower($u)] = ['username' => $u, 'password' => $p];
+                $usernamesToQuery[] = strtolower($u);
+            }
+            $usernamesToQuery = array_values(array_unique($usernamesToQuery));
+
+            // 2. Fetch Accounts
+            $accountMap = DB::getAccountsByUsernames($usernamesToQuery);
+
+            // 3. Separate into Needs Check, Needs Get, Not Found
+            $needsCheck = [];
+            $needsGet = [];
+            $notFound = [];
+            
+            foreach ($parsedRequests as $lu => $req) {
+                $acc = $accountMap[$lu] ?? null;
+                if ($acc && !empty($acc['cookie'])) {
+                    $needsCheck[$lu] = $acc['cookie'];
+                } else if ($req['password'] !== null && $req['password'] !== '') {
+                    $needsGet[$lu] = $req['password'];
+                } else {
+                    $notFound[] = $req['username'];
+                }
+            }
+
+            // 4. ZP Cookie Checker
+            $checkerKey = DB::getSetting('zp_checker_key', '');
+            if (!empty($needsCheck) && !empty($checkerKey)) {
+                require_once __DIR__ . '/zp_helpers.php';
+                $deadUsers = zp_check_cookies($checkerKey, $needsCheck);
+                foreach ($deadUsers as $lu) {
+                    if (!empty($parsedRequests[$lu]['password'])) {
+                        $needsGet[$lu] = $parsedRequests[$lu]['password'];
+                    } else {
+                        $notFound[] = $parsedRequests[$lu]['username'];
+                    }
+                    unset($needsCheck[$lu]);
+                }
+            }
+
+            // 5. ZP Get Cookie
+            $getKey = DB::getSetting('zp_getcookie_key', '');
+            if (!empty($needsGet)) {
+                if (empty($getKey)) {
+                    foreach ($needsGet as $lu => $p) {
+                        $notFound[] = $parsedRequests[$lu]['username'];
+                    }
+                    $needsGet = [];
+                } else {
+                    require_once __DIR__ . '/zp_helpers.php';
+                    $newCookies = zp_get_cookies($getKey, $needsGet);
+                    foreach ($needsGet as $lu => $p) {
+                        if (isset($newCookies[$lu])) {
+                            DB::upsertAccount(
+                                $parsedRequests[$lu]['username'],
+                                $newCookies[$lu]['cookie'],
+                                $newCookies[$lu]['password'],
+                                '',
+                                'external'
+                            );
+                            $accountMap[$lu] = [
+                                'username' => $parsedRequests[$lu]['username'],
+                                'password' => $newCookies[$lu]['password'],
+                                'cookie' => $newCookies[$lu]['cookie']
+                            ];
+                        } else {
+                            $notFound[] = $parsedRequests[$lu]['username'];
+                        }
+                    }
+                }
+            }
+
+            // 6. Build lines for job submission
+            $lines = [];
+            foreach ($parsedRequests as $lu => $req) {
+                if (!in_array($req['username'], $notFound) && isset($accountMap[$lu]) && !empty($accountMap[$lu]['cookie'])) {
+                    $pass = !empty($accountMap[$lu]['password']) ? $accountMap[$lu]['password'] : 'unknown';
+                    $lines[] = $accountMap[$lu]['username'] . ':' . $pass . ':' . $accountMap[$lu]['cookie'];
+                }
             }
 
             if (empty($lines)) {
-                $msg = 'ไม่พบบัญชีในระบบสำหรับ: ' . implode(', ', $notFound);
+                $msg = 'คุกกี้เสียหรือไม่พบข้อมูล กรุณาใส่แบบ ชื่อ:รหัสผ่าน เพื่อต่ออายุ: ' . implode(', ', $notFound);
                 jsonResponse(['success' => false, 'error' => $msg], 404);
             }
 
