@@ -57,7 +57,7 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
 
   const btn = document.getElementById('btnCustSubmit');
   btn.disabled = true;
-  btn.innerHTML = '<span>⏳</span><span>กำลังส่งงานแก้แคปช่า...</span>';
+  btn.innerHTML = '<span>⏳</span><span>กำลังตรวจสอบคุกกี้ & ขอคุกกี้ใหม่ (อาจใช้เวลา 15-40 วิ)...</span>';
 
   try {
     const res = await fetch('/api.php?action=customer_submit', {
