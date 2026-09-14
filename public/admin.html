@@ -81,6 +81,29 @@
           </div>
 
           <form id="formAdminSettings">
+          <style>
+            .admin-subtabs { display:flex; gap:10px; margin-bottom:20px; border-bottom:1px solid var(--panel-border); padding-bottom:10px; flex-wrap:wrap; }
+            .subtab { padding:8px 16px; background:var(--panel-3); border:1px solid var(--panel-border); border-radius:6px; cursor:pointer; color:var(--text-muted); font-size:14px; font-weight:500; }
+            .subtab.active { background:var(--lemon); color:#000; border-color:var(--lemon); font-weight:700; }
+            .subtab-content { display:none; }
+            .subtab-content.active { display:block; }
+          </style>
+          <script>
+            function switchSubTab(tabId) {
+              document.querySelectorAll('.subtab').forEach(t => t.classList.remove('active'));
+              document.querySelectorAll('.subtab-content').forEach(c => c.classList.remove('active'));
+              document.querySelector(`[onclick="switchSubTab('${tabId}')"]`).classList.add('active');
+              document.getElementById('subtab-' + tabId).classList.add('active');
+            }
+          </script>
+          
+          <div class="admin-subtabs">
+            <div class="subtab active" onclick="switchSubTab('general')">⚙️ ทั่วไป (General)</div>
+            <div class="subtab" onclick="switchSubTab('links')">💬 ลิงก์ติดต่อ (Links)</div>
+            <div class="subtab" onclick="switchSubTab('api')">🔑 จัดการ API (Keys)</div>
+          </div>
+
+<div id="subtab-general" class="subtab-content active">
             <div class="form-group">
               <label class="form-label">เลือกโหมดคิวสำหรับงานที่ลูกค้าส่ง:</label>
               <div class="form-desc">
@@ -110,7 +133,8 @@
               </div>
             </div>
 
-            <hr style="border:none;border-top:1px solid var(--panel-border);margin:24px 0;" />
+            </div>
+<div id="subtab-links" class="subtab-content">
 
             <div class="form-group" style="background:var(--panel-2); padding:16px; border-radius:8px; border:1px solid var(--panel-border);">
               <h4 style="margin-top:0; margin-bottom:12px; color:var(--lemon);">ลิงก์ติดต่อและสถานะเว็บไซต์</h4>
@@ -159,9 +183,12 @@
 
             </div>
 
-            <hr style="border:none;border-top:1px solid var(--panel-border);margin:24px 0;" />
+            </div>
+<div id="subtab-links" class="subtab-content">
 
-            <div class="form-group">
+            </div>
+<div id="subtab-api" class="subtab-content">
+<div class="form-group">
               <label class="form-label" for="settingApiKey">HIGHSPEC API Key ของทางร้าน:</label>
               <div class="form-desc">API Key ที่ใช้สำหรับตัดเงินและยิงงาน (ขึ้นต้นด้วย <code>hsk_</code>)</div>
               <input type="text" id="settingApiKey" placeholder="hsk_xxxxxxxxxxxxxxxxxxxxxx" />
@@ -259,7 +286,8 @@
               </select>
             </div>
 
-            <div style="display:flex;gap:12px;margin-top:24px;">
+            </div>
+<div style="display:flex;gap:12px;margin-top:24px;">
               <button type="submit" class="btn btn-primary">💾 บันทึกการตั้งค่าทั้งหมด</button>
               <button type="button" class="btn btn-secondary" id="btnTestApiKey">🔌 ทดสอบเชื่อมต่อ API</button>
             </div>

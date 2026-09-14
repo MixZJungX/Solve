@@ -65,7 +65,21 @@ function switchAdminTab(tabId) {
 
   if (tabId === 'tab-accounts') loadAdminAccounts();
   if (tabId === 'tab-history') loadAdminHistory();
-  if (tabId === 'tab-settings') loadAdminSettings();
+  if (tabId === 'tab-settings') 
+    const zpCheckKey = document.getElementById('settingZpCheckerKey') ? document.getElementById('settingZpCheckerKey').value.trim() : '';
+    if (zpCheckKey) {
+      await apiCall('/api.php?action=admin_save_zp_checker_key', 'POST', { zp_checker_key: zpCheckKey });
+      document.getElementById('settingZpCheckerKey').value = '';
+    }
+    
+    const zpGetCookieKey = document.getElementById('settingZpGetCookieKey') ? document.getElementById('settingZpGetCookieKey').value.trim() : '';
+    if (zpGetCookieKey) {
+      await apiCall('/api.php?action=admin_save_zp_getcookie_key', 'POST', { zp_getcookie_key: zpGetCookieKey });
+      document.getElementById('settingZpGetCookieKey').value = '';
+    }
+    
+    loadAdminSettings();
+
   if (tabId === 'tab-members') loadAdminMembers();
   if (tabId === 'tab-topup') loadAdminTopup();
 }
@@ -79,7 +93,21 @@ async function checkAuth() {
   try {
     const { ok, data } = await apiCall('/api.php?action=admin_check_auth');
     if (ok && data.is_admin) {
-      loadAdminSettings();
+      
+    const zpCheckKey = document.getElementById('settingZpCheckerKey') ? document.getElementById('settingZpCheckerKey').value.trim() : '';
+    if (zpCheckKey) {
+      await apiCall('/api.php?action=admin_save_zp_checker_key', 'POST', { zp_checker_key: zpCheckKey });
+      document.getElementById('settingZpCheckerKey').value = '';
+    }
+    
+    const zpGetCookieKey = document.getElementById('settingZpGetCookieKey') ? document.getElementById('settingZpGetCookieKey').value.trim() : '';
+    if (zpGetCookieKey) {
+      await apiCall('/api.php?action=admin_save_zp_getcookie_key', 'POST', { zp_getcookie_key: zpGetCookieKey });
+      document.getElementById('settingZpGetCookieKey').value = '';
+    }
+    
+    loadAdminSettings();
+
       refreshAdminBalance();
       loadAdminAccounts();
     } else {
@@ -289,7 +317,21 @@ document.getElementById('formAdminSettings')?.addEventListener('submit', async (
       }
     }
 
+    
+    const zpCheckKey = document.getElementById('settingZpCheckerKey') ? document.getElementById('settingZpCheckerKey').value.trim() : '';
+    if (zpCheckKey) {
+      await apiCall('/api.php?action=admin_save_zp_checker_key', 'POST', { zp_checker_key: zpCheckKey });
+      document.getElementById('settingZpCheckerKey').value = '';
+    }
+    
+    const zpGetCookieKey = document.getElementById('settingZpGetCookieKey') ? document.getElementById('settingZpGetCookieKey').value.trim() : '';
+    if (zpGetCookieKey) {
+      await apiCall('/api.php?action=admin_save_zp_getcookie_key', 'POST', { zp_getcookie_key: zpGetCookieKey });
+      document.getElementById('settingZpGetCookieKey').value = '';
+    }
+    
     loadAdminSettings();
+
     refreshAdminBalance();
   } else {
     showToast(data.error || 'บันทึกไม่สำเร็จ', 'error');

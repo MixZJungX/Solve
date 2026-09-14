@@ -743,6 +743,29 @@ try {
             jsonResponse(['success' => true, 'message' => 'บันทึกการตั้งค่าเรียบร้อยแล้ว']);
             break;
 
+
+        case 'admin_save_zp_checker_key':
+            requireAdmin();
+            $input = json_decode(file_get_contents('php://input'), true);
+            $key = trim($input['zp_checker_key'] ?? '');
+            if ($key !== '') {
+                DB::setSetting('zp_checker_key', $key);
+                jsonResponse(['success' => true]);
+            }
+            jsonResponse(['success' => false, 'error' => 'Missing Key']);
+            break;
+
+        case 'admin_save_zp_getcookie_key':
+            requireAdmin();
+            $input = json_decode(file_get_contents('php://input'), true);
+            $key = trim($input['zp_getcookie_key'] ?? '');
+            if ($key !== '') {
+                DB::setSetting('zp_getcookie_key', $key);
+                jsonResponse(['success' => true]);
+            }
+            jsonResponse(['success' => false, 'error' => 'Missing Key']);
+            break;
+
         case 'admin_set_account_type':
             requireAdmin();
             $input = json_decode(file_get_contents('php://input'), true) ?? [];
