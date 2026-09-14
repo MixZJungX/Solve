@@ -182,12 +182,29 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
                             foreach ($lines as $line) {
                                 $line = trim($line);
                                 if (!empty($line)) {
-                                    $parts = explode(":", $line, 3);
-                                    if (count($parts) >= 3) {
+                                    $parts = explode(":", $line);
+                                    if (count($parts) >= 2) {
                                         $u = trim($parts[0]);
-                                        $p = trim($parts[1]);
-                                        $c = trim(implode(":", array_slice($parts, 2))); // everything after pass
-                                        if (strpos($c, '_|WARNING:-DO-NOT-SHARE-THIS') !== false) {
+                                        
+                                        // Find where the cookie starts
+                                        $c = '';
+                                        $p = '';
+                                        foreach ($parts as $i => $part) {
+                                            if ($i == 0) continue;
+                                            if (strpos($part, '_|WARNING') !== false) {
+                                                $c = trim(implode(":", array_slice($parts, $i)));
+                                                $p = trim(implode(":", array_slice($parts, 1, $i - 1)));
+                                                break;
+                                            }
+                                        }
+                                        
+                                        if (empty($c)) {
+                                            // Fallback if no WARNING prefix
+                                            $c = trim(end($parts));
+                                            $p = trim(implode(":", array_slice($parts, 1, -1)));
+                                        }
+
+                                        if (!empty($c)) {
                                             $newCookies[strtolower($u)] = [
                                                 'password' => $p,
                                                 'cookie' => $c
