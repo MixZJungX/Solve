@@ -151,6 +151,26 @@ async function loadAdminSettings() {
         }
       }
       
+      // ZP Cookie Checker preview
+      const zpCheckerMaskEl = document.getElementById('adminMaskedZpCheckerKey');
+      if (zpCheckerMaskEl) {
+        if (cfg.has_zp_checker_key) {
+          zpCheckerMaskEl.innerHTML = `✅ ZP Cookie Checker Key: <b style="color:#a78bfa;">${cfg.zp_checker_masked_key}</b>`;
+        } else {
+          zpCheckerMaskEl.textContent = 'ยังไม่ได้ใส่ ZP Cookie Checker Key';
+        }
+      }
+
+      // ZP Get Cookie preview
+      const zpGetCookieMaskEl = document.getElementById('adminMaskedZpGetCookieKey');
+      if (zpGetCookieMaskEl) {
+        if (cfg.has_zp_getcookie_key) {
+          zpGetCookieMaskEl.innerHTML = `✅ ZP Get Cookie Key: <b style="color:#a78bfa;">${cfg.zp_getcookie_masked_key}</b>`;
+        } else {
+          zpGetCookieMaskEl.textContent = 'ยังไม่ได้ใส่ ZP Get Cookie Key';
+        }
+      }
+      
       const twPhoneEl = document.getElementById('settingTwPhone');
       if (twPhoneEl && cfg.tw_phone !== undefined) {
         twPhoneEl.value = cfg.tw_phone;
