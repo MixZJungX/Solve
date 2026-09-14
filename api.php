@@ -196,7 +196,7 @@ try {
             if (empty($usernamesToQuery)) {
                 jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละครอย่างน้อย 1 บัญชี'], 400);
             }
-            $dbAccounts = getAccountsByUsernames($usernamesToQuery);
+            $dbAccounts = DB::getAccountsByUsernames($usernamesToQuery);
             if (empty($dbAccounts)) {
                 jsonResponse(['success' => false, 'error' => 'ไม่พบบัญชีต่อไปนี้ในระบบ: ' . implode(', ', $usernamesToQuery)], 404);
             }
