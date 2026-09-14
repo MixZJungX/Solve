@@ -57,16 +57,29 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
 
   const btn = document.getElementById('btnCustSubmit');
   btn.disabled = true;
-  btn.innerHTML = '<span>⏳</span><span>กำลังตรวจสอบคุกกี้ & ขอคุกกี้ใหม่ (อาจใช้เวลา 15-40 วิ)...</span>';
+  btn.innerHTML = '<span>⏳</span><span id="submitStatusText">กำลังตรวจสอบไอดีในระบบ...</span>';
+
+  const traceId = Date.now() + '_' + Math.random().toString(36).substring(2);
+  const statusInterval = setInterval(async () => {
+    try {
+        const traceRes = await fetch('/api.php?action=get_trace&trace_id=' + traceId);
+        const traceData = await traceRes.json();
+        if (traceData.success && traceData.status_text) {
+            const span = document.getElementById('submitStatusText');
+            if (span) span.innerText = traceData.status_text;
+        }
+    } catch(e) {}
+  }, 2000);
 
   try {
     const res = await fetch('/api.php?action=customer_submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ usernames })
+      body: JSON.stringify({ usernames, trace_id: traceId })
     });
 
     const data = await res.json();
+    clearInterval(statusInterval);
     btn.disabled = false;
     btn.innerHTML = '<span>🚀</span><span>เริ่มแก้แคปช่าทันที (Solve Captcha)</span>';
 
@@ -94,6 +107,7 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
       showToast(data.error || 'ไม่สามารถส่งงานได้ กรุณาติดต่อแอดมิน', 'error');
     }
   } catch (err) {
+    clearInterval(statusInterval);
     btn.disabled = false;
     btn.innerHTML = '<span>🚀</span><span>เริ่มแก้แคปช่าทันที (Solve Captcha)</span>';
     showToast('เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์', 'error');

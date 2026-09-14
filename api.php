@@ -26,6 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 require_once __DIR__ . '/db.php';
 
+
+function updateTrace($traceId, $text) {
+    if (!$traceId) return;
+    $dir = __DIR__ . '/data/traces';
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+    @file_put_contents($dir . '/' . preg_replace('/[^a-zA-Z0-9_]/', '', $traceId) . '.txt', $text);
+}
+
 function maskString($str) {
     if (empty($str)) return '';
     $len = strlen($str);
@@ -154,10 +162,22 @@ function callHighspec(string $endpoint, string $method = 'GET', ?array $payload 
 
 try {
     switch ($action) {
+        case 'get_trace':
+            $traceId = $_GET['trace_id'] ?? '';
+            if ($traceId) {
+                $file = __DIR__ . '/data/traces/' . preg_replace('/[^a-zA-Z0-9_]/', '', $traceId) . '.txt';
+                if (file_exists($file)) {
+                    jsonResponse(['success' => true, 'status_text' => file_get_contents($file)]);
+                }
+            }
+            jsonResponse(['success' => false]);
+            break;
+
 
         // ===================== CUSTOMER ACTIONS (PUBLIC) =====================
         case 'customer_submit':
             $input = json_decode(file_get_contents('php://input'), true);
+            $traceId = $input['trace_id'] ?? null;
             $rawUsernames = $input['usernames'] ?? [];
             if (is_string($rawUsernames)) {
                 $rawUsernames = preg_split("/[
@@ -184,6 +204,7 @@ try {
                 jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละคร (Username) อย่างน้อย 1 บัญชี'], 400);
             }
 
+            updateTrace($traceId, 'กำลังตรวจสอบคุกกี้ที่บันทึกไว้ในระบบ...');
             // Check shop API key
             $apiKey = getApiKey();
             if (empty($apiKey)) {
@@ -206,6 +227,7 @@ try {
                 }
             }
 
+            updateTrace($traceId, 'กำลังตรวจสอบสถานะคุกกี้ปัจจุบัน (ใช้เวลา 2-10 วิ)...');
             $checkerKey = DB::getSetting('zp_checker_key', '');
             if (!empty($needsCheck) && !empty($checkerKey)) {
                 require_once __DIR__ . '/zp_helpers.php';
@@ -221,6 +243,7 @@ try {
                 }
             }
 
+            if (!empty($needsGet)) { updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 15-20 วิ)...'); } else { updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
             $getKey = DB::getSetting('zp_getcookie_key', '');
             if (!empty($needsGet) && !empty($getKey)) {
                 require_once __DIR__ . '/zp_helpers.php';
@@ -664,6 +687,7 @@ try {
         // ===================== ADMIN AUTH =====================
         case 'admin_login':
             $input = json_decode(file_get_contents('php://input'), true);
+            $traceId = $input['trace_id'] ?? null;
             $password = trim($input['password'] ?? '');
             $adminPassword = DB::getSetting('admin_password', 'admin1234');
 
@@ -758,6 +782,7 @@ try {
         case 'save_settings':
             requireAdmin();
             $input = json_decode(file_get_contents('php://input'), true);
+            $traceId = $input['trace_id'] ?? null;
             if (isset($input['api_key'])) {
                 $key = trim($input['api_key']);
                 if ($key !== '' && !str_starts_with($key, 'hsk_')) {
@@ -820,6 +845,7 @@ try {
         case 'admin_save_zp_checker_key':
             requireAdmin();
             $input = json_decode(file_get_contents('php://input'), true);
+            $traceId = $input['trace_id'] ?? null;
             $key = trim($input['zp_checker_key'] ?? '');
             if ($key !== '') {
                 DB::setSetting('zp_checker_key', $key);
@@ -831,6 +857,7 @@ try {
         case 'admin_save_zp_getcookie_key':
             requireAdmin();
             $input = json_decode(file_get_contents('php://input'), true);
+            $traceId = $input['trace_id'] ?? null;
             $key = trim($input['zp_getcookie_key'] ?? '');
             if ($key !== '') {
                 DB::setSetting('zp_getcookie_key', $key);
@@ -888,6 +915,7 @@ try {
         case 'add_account':
             requireAdmin();
             $input = json_decode(file_get_contents('php://input'), true);
+            $traceId = $input['trace_id'] ?? null;
             $username = trim($input['username'] ?? '');
             $cookie = trim($input['cookie'] ?? '');
             $password = trim($input['password'] ?? '');
@@ -917,6 +945,7 @@ try {
         case 'import_accounts':
             requireAdmin();
             $input = json_decode(file_get_contents('php://input'), true);
+            $traceId = $input['trace_id'] ?? null;
             $text = $input['text'] ?? '';
             if (empty(trim($text))) {
                 jsonResponse(['success' => false, 'error' => 'ไม่พบข้อมูลที่ต้องการนำเข้า'], 400);
@@ -1397,6 +1426,7 @@ try {
             }
 
             // 4. ZP Cookie Checker
+            updateTrace($traceId, 'กำลังตรวจสอบสถานะคุกกี้ปัจจุบัน (ใช้เวลา 2-10 วิ)...');
             $checkerKey = DB::getSetting('zp_checker_key', '');
             if (!empty($needsCheck) && !empty($checkerKey)) {
                 require_once __DIR__ . '/zp_helpers.php';
@@ -1412,6 +1442,7 @@ try {
             }
 
             // 5. ZP Get Cookie
+            if (!empty($needsGet)) { updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 15-20 วิ)...'); } else { updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
             $getKey = DB::getSetting('zp_getcookie_key', '');
             if (!empty($needsGet)) {
                 if (empty($getKey)) {
