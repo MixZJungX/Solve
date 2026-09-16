@@ -91,6 +91,7 @@ class DB {
 
         // Migrate existing accounts: add account_type column if not exist (existing rows become 'shop')
         try { $pdo->exec("ALTER TABLE accounts ADD COLUMN account_type TEXT DEFAULT 'shop'"); } catch (\Exception $e) {}
+        try { $pdo->exec("ALTER TABLE accounts ADD COLUMN updated_at TIMESTAMP DEFAULT NULL"); } catch (\Exception $e) {}
 
         // Migrate jobs table for refunds
         try { $pdo->exec("ALTER TABLE jobs ADD COLUMN member_id INTEGER DEFAULT 0"); } catch (\Exception $e) {}

@@ -1684,9 +1684,7 @@ foreach ($deadUsers as $lu) {
             break;
 
         case 'admin_live_logs':
-            if (empty($_SESSION['admin_logged_in'])) {
-                jsonResponse(['success' => false], 401);
-            }
+            requireAdmin();
             $logFile = __DIR__ . '/data/admin_live_log.txt';
             $lines = [];
             if (file_exists($logFile)) {
@@ -1696,9 +1694,7 @@ foreach ($deadUsers as $lu) {
             break;
 
         case 'admin_clear_live_logs':
-            if (empty($_SESSION['admin_logged_in'])) {
-                jsonResponse(['success' => false], 401);
-            }
+            requireAdmin();
             $logFile = __DIR__ . '/data/admin_live_log.txt';
             if (file_exists($logFile)) {
                 @unlink($logFile);
