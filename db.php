@@ -15,6 +15,7 @@ class DB {
             self::$pdo = new PDO($dsn, 'neondb_owner', 'npg_pTE1Uzgekdw3');
             self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             self::$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+            self::$pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
 
             self::initTables();
         }
