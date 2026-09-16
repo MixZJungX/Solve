@@ -34,6 +34,31 @@ function updateTrace($traceId, $text) {
     @file_put_contents($dir . '/' . preg_replace('/[^a-zA-Z0-9_]/', '', $traceId) . '.txt', $text);
 }
 
+function writeAdminLog($action, $message) {
+    $dir = __DIR__ . '/data';
+    if (!is_dir($dir)) @mkdir($dir, 0777, true);
+    $logFile = $dir . '/admin_live_log.txt';
+    
+    date_default_timezone_set('Asia/Bangkok');
+    $time = date('Y-m-d H:i:s');
+    $ip = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+    
+    // Read existing to keep only last 500 lines
+    $lines = [];
+    if (file_exists($logFile)) {
+        $lines = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    }
+    
+    $line = "[{$time}] [IP: {$ip}] [{$action}] {$message}";
+    $lines[] = $line;
+    
+    if (count($lines) > 500) {
+        $lines = array_slice($lines, -500);
+    }
+    
+    @file_put_contents($logFile, implode(PHP_EOL, $lines) . PHP_EOL);
+}
+
 function maskString($str) {
     if (empty($str)) return '';
     $len = strlen($str);
@@ -208,6 +233,8 @@ try {
             $input = json_decode(file_get_contents('php://input'), true);
             $traceId = $input['trace_id'] ?? null;
             $rawUsernames = $input['usernames'] ?? [];
+            writeAdminLog('Submit', 'ลูกค้ากดเริ่มแก้แคปช่า จำนวน ' . (is_array($rawUsernames) ? count($rawUsernames) : 1) . ' ไอดี');
+
             if (is_string($rawUsernames)) {
                 $rawUsernames = preg_split("/[
 
@@ -257,11 +284,13 @@ try {
             }
 
             updateTrace($traceId, 'กำลังตรวจสอบสถานะคุกกี้ปัจจุบัน (ใช้เวลา 2-10 วิ)...');
-            $checkerKey = DB::getSetting('zp_checker_key', '');
+            writeAdminLog('Check', 'กำลังตรวจสอบคุกกี้กับ ZP Cookie Checker...');
+$checkerKey = DB::getSetting('zp_checker_key', '');
             if (!empty($needsCheck) && !empty($checkerKey)) {
                 require_once __DIR__ . '/zp_helpers.php';
                 $deadUsers = zp_check_cookies($checkerKey, $needsCheck);
-                foreach ($deadUsers as $lu) {
+                writeAdminLog('Check', 'ตรวจเสร็จสิ้น พบตาย ' . count($deadUsers) . ' ไอดี (จากทั้งหมด ' . count($needsCheck) . ')');
+foreach ($deadUsers as $lu) {
                     if (!empty($parsedRequests[$lu]['password'])) {
                         $needsGet[$lu] = $parsedRequests[$lu]['password'];
                     }
@@ -272,7 +301,7 @@ try {
                 }
             }
 
-            if (!empty($needsGet)) { updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 15-20 วิ)...'); } else { updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
+            if (!empty($needsGet)) { writeAdminLog('GetCookie', 'กำลังสั่ง ZP ดึงคุกกี้ใหม่ ' . count($needsGet) . ' ไอดี'); updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 15-20 วิ)...'); } else { writeAdminLog('Info', 'คุกกี้สมบูรณ์ทั้งหมด ไม่ต้องดึงใหม่'); updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
             $getKey = DB::getSetting('zp_getcookie_key', '');
             if (!empty($needsGet) && !empty($getKey)) {
                 require_once __DIR__ . '/zp_helpers.php';
@@ -299,9 +328,7 @@ try {
                         unset($accountMap[$lu]);
                     }
                 }
-                if (!empty($failedGets)) {
-                    jsonResponse(['success' => false, 'error' => 'ดึงคุกกี้ใหม่ล้มเหลวที่บัญชี: ' . implode(', ', $failedGets) . ' (รหัสผ่านอาจผิด หรือระบบ Roblox มีปัญหา)'], 400);
-                }
+                if (!empty($failedGets)) { writeAdminLog('Error', 'ดึงคุกกี้ใหม่ล้มเหลว: ' . implode(', ', $failedGets)); jsonResponse(['success' => false, 'error' => 'ดึงคุกกี้ใหม่ล้มเหลวที่บัญชี: ' . implode(', ', $failedGets) . ' (รหัสผ่านอาจผิด หรือระบบ Roblox มีปัญหา)'], 400); }
             }
             
             // Re-build $usernames for the next section which expects original case usernames
@@ -386,7 +413,8 @@ try {
 
             $note = 'Lemon Shop Customer (' . count($jobAccounts) . ' accs)';
 
-            if ($provider === 'zeropoint') {
+            writeAdminLog('Solver', 'เตรียมส่งงานไปที่ ' . strtoupper($provider) . ' จำนวน ' . count($jobAccounts) . ' ไอดี');
+              if ($provider === 'zeropoint') {
                 $zpKey = DB::getSetting('zerosolver_api_key', '');
                 if (empty($zpKey)) {
                     jsonResponse(['success' => false, 'error' => 'แอดมินยังไม่ได้ตั้งค่า ZeroSolver API Key'], 503);
@@ -1464,11 +1492,13 @@ try {
 
             // 4. ZP Cookie Checker
             updateTrace($traceId, 'กำลังตรวจสอบสถานะคุกกี้ปัจจุบัน (ใช้เวลา 2-10 วิ)...');
-            $checkerKey = DB::getSetting('zp_checker_key', '');
+            writeAdminLog('Check', 'กำลังตรวจสอบคุกกี้กับ ZP Cookie Checker...');
+$checkerKey = DB::getSetting('zp_checker_key', '');
             if (!empty($needsCheck) && !empty($checkerKey)) {
                 require_once __DIR__ . '/zp_helpers.php';
                 $deadUsers = zp_check_cookies($checkerKey, $needsCheck);
-                foreach ($deadUsers as $lu) {
+                writeAdminLog('Check', 'ตรวจเสร็จสิ้น พบตาย ' . count($deadUsers) . ' ไอดี (จากทั้งหมด ' . count($needsCheck) . ')');
+foreach ($deadUsers as $lu) {
                     if (!empty($parsedRequests[$lu]['password'])) {
                         $needsGet[$lu] = $parsedRequests[$lu]['password'];
                     } else {
@@ -1479,7 +1509,7 @@ try {
             }
 
             // 5. ZP Get Cookie
-            if (!empty($needsGet)) { updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 15-20 วิ)...'); } else { updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
+            if (!empty($needsGet)) { writeAdminLog('GetCookie', 'กำลังสั่ง ZP ดึงคุกกี้ใหม่ ' . count($needsGet) . ' ไอดี'); updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 15-20 วิ)...'); } else { writeAdminLog('Info', 'คุกกี้สมบูรณ์ทั้งหมด ไม่ต้องดึงใหม่'); updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
             $getKey = DB::getSetting('zp_getcookie_key', '');
             if (!empty($needsGet)) {
                 if (empty($getKey)) {
@@ -1512,9 +1542,7 @@ try {
                             unset($accountMap[$lu]);
                         }
                     }
-                    if (!empty($failedGets)) {
-                        jsonResponse(['success' => false, 'error' => 'ดึงคุกกี้ใหม่ล้มเหลวที่บัญชี: ' . implode(', ', $failedGets) . ' (รหัสผ่านอาจผิด หรือระบบ Roblox มีปัญหา)'], 400);
-                    }
+                    if (!empty($failedGets)) { writeAdminLog('Error', 'ดึงคุกกี้ใหม่ล้มเหลว: ' . implode(', ', $failedGets)); jsonResponse(['success' => false, 'error' => 'ดึงคุกกี้ใหม่ล้มเหลวที่บัญชี: ' . implode(', ', $failedGets) . ' (รหัสผ่านอาจผิด หรือระบบ Roblox มีปัญหา)'], 400); }
                 }
             }
 
@@ -1652,6 +1680,29 @@ try {
             $id = (int)($body['id'] ?? 0);
             if (!$id) jsonResponse(['success' => false, 'error' => 'ไม่พบ ID'], 400);
             DB::deleteMember($id);
+            jsonResponse(['success' => true]);
+            break;
+
+        case 'admin_live_logs':
+            if (empty($_SESSION['admin_logged_in'])) {
+                jsonResponse(['success' => false], 401);
+            }
+            $logFile = __DIR__ . '/data/admin_live_log.txt';
+            $lines = [];
+            if (file_exists($logFile)) {
+                $lines = file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+            }
+            jsonResponse(['success' => true, 'logs' => array_reverse($lines)]);
+            break;
+
+        case 'admin_clear_live_logs':
+            if (empty($_SESSION['admin_logged_in'])) {
+                jsonResponse(['success' => false], 401);
+            }
+            $logFile = __DIR__ . '/data/admin_live_log.txt';
+            if (file_exists($logFile)) {
+                @unlink($logFile);
+            }
             jsonResponse(['success' => true]);
             break;
 

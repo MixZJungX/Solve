@@ -833,3 +833,62 @@ document.getElementById('btnAdminReloadTopup')?.addEventListener('click', () => 
 window.addEventListener('DOMContentLoaded', () => {
   checkAuth();
 });
+
+
+// ==========================================
+// LIVE LOGS (SYSTEM TRACING)
+// ==========================================
+let liveLogInterval = null;
+
+document.querySelector('[data-tab="tab-live-logs"]')?.addEventListener('click', () => {
+    fetchLiveLogs();
+    if (liveLogInterval) clearInterval(liveLogInterval);
+    liveLogInterval = setInterval(fetchLiveLogs, 5000);
+});
+
+// Clear interval if switching tabs
+document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        if (e.currentTarget.getAttribute('data-tab') !== 'tab-live-logs') {
+            if (liveLogInterval) clearInterval(liveLogInterval);
+        }
+    });
+});
+
+async function fetchLiveLogs() {
+    try {
+        const res = await fetch('/api.php?action=admin_live_logs');
+        const data = await res.json();
+        if (res.ok && data.success) {
+            const container = document.getElementById('adminLiveLogsContainer');
+            if (!container) return;
+            if (!data.logs || data.logs.length === 0) {
+                container.textContent = 'ยังไม่มีบันทึกข้อมูลในระบบ...';
+                return;
+            }
+            container.innerHTML = data.logs.map(log => {
+                if (log.includes('[Error]')) {
+                    return `<div style="color: #f87171;">${log}</div>`;
+                } else if (log.includes('[Success]')) {
+                    return `<div style="color: #4ade80;">${log}</div>`;
+                } else if (log.includes('[GetCookie]')) {
+                    return `<div style="color: #facc15;">${log}</div>`;
+                }
+                return `<div>${log}</div>`;
+            }).join('');
+        }
+    } catch (err) {}
+}
+
+document.getElementById('btnRefreshLogs')?.addEventListener('click', fetchLiveLogs);
+document.getElementById('btnClearLogs')?.addEventListener('click', async () => {
+    if (!confirm('ยืนยันล้างข้อมูล Log ทั้งหมด?')) return;
+    try {
+        const res = await fetch('/api.php?action=admin_clear_live_logs', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            document.getElementById('adminLiveLogsContainer').textContent = 'ยังไม่มีบันทึกข้อมูลในระบบ...';
+            alert('ล้างข้อมูลเรียบร้อย');
+        }
+    } catch (err) {}
+});
