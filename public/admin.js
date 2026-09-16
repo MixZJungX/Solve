@@ -365,6 +365,7 @@ async function loadAdminAccounts(query = '') {
               <button class="btn btn-secondary btn-sm" style="padding:2px 6px;font-size:10px;" onclick="copyText('${acc.username}')" title="คัดลอกชื่อ">📋 คัดลอก</button>
             </div>
             ${acc.note ? `<div style="font-size:11px;color:var(--text-muted);">${acc.note}</div>` : ''}
+            ${acc.updated_at ? `<div style="font-size:10px;color:var(--lemon);margin-top:4px;">🔄 อัพเดทล่าสุด: ${acc.updated_at}</div>` : ''}
           </td>
           <td>${typeBadge}</td>
           <td>

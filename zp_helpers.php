@@ -128,7 +128,7 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
     
     $jobId = $data['job_id'];
     
-    $maxWait = 60; // 60 seconds max
+    $maxWait = 180; // 180 seconds max
     $start = time();
     $newCookies = [];
     

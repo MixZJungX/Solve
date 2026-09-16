@@ -169,6 +169,7 @@ class DB {
             VALUES (?, ?, ?, ?, ?)
             ON CONFLICT(username) DO UPDATE SET
                 cookie = excluded.cookie,
+                updated_at = CURRENT_TIMESTAMP,
                 password = CASE WHEN excluded.password != '' THEN excluded.password ELSE accounts.password END,
                 note = CASE WHEN excluded.note != '' THEN excluded.note ELSE accounts.note END
         ");
@@ -193,7 +194,7 @@ class DB {
     public static function listAccounts(string $search = '', int $limit = 20000): array {
         if (!empty($search)) {
             $stmt = self::get()->prepare("
-                SELECT id, username, password, status, note, account_type, last_job_id, last_status, last_used_at, created_at,
+                SELECT id, username, password, status, note, account_type, last_job_id, last_status, last_used_at, created_at, updated_at,
                        substr(cookie, 1, 30) || '...' as cookie_preview
                 FROM accounts
                 WHERE username LIKE ? OR note LIKE ?
@@ -203,7 +204,7 @@ class DB {
             $stmt->execute([$like, $like, $limit]);
         } else {
             $stmt = self::get()->prepare("
-                SELECT id, username, password, status, note, account_type, last_job_id, last_status, last_used_at, created_at,
+                SELECT id, username, password, status, note, account_type, last_job_id, last_status, last_used_at, created_at, updated_at,
                        substr(cookie, 1, 30) || '...' as cookie_preview
                 FROM accounts
                 ORDER BY id DESC LIMIT ?

@@ -301,12 +301,12 @@ foreach ($deadUsers as $lu) {
                 }
             }
 
-            if (!empty($needsGet)) { writeAdminLog('GetCookie', 'กำลังสั่ง ZP ดึงคุกกี้ใหม่ ' . count($needsGet) . ' ไอดี'); updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 15-20 วิ)...'); } else { writeAdminLog('Info', 'คุกกี้สมบูรณ์ทั้งหมด ไม่ต้องดึงใหม่'); updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
+            if (!empty($needsGet)) { writeAdminLog('GetCookie', 'กำลังสั่ง ZP ดึงคุกกี้ใหม่ ' . count($needsGet) . ' ไอดี'); updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 1-3 นาที)...'); } else { writeAdminLog('Info', 'คุกกี้สมบูรณ์ทั้งหมด ไม่ต้องดึงใหม่'); updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
             $getKey = DB::getSetting('zp_getcookie_key', '');
             if (!empty($needsGet) && !empty($getKey)) {
                 require_once __DIR__ . '/zp_helpers.php';
                 $newCookies = zp_get_cookies($getKey, $needsGet, $traceId);
-                if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
+                if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); writeAdminLog('Database', 'อัพเดทฐานข้อมูล: บันทึกคุกกี้ใหม่พร้อมประทับเวลา updated_at จำนวน ' . count($newCookies) . ' ไอดี'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
                 $failedGets = [];
                 foreach ($needsGet as $lu => $p) {
                     if (isset($newCookies[$lu])) {
@@ -1509,7 +1509,7 @@ foreach ($deadUsers as $lu) {
             }
 
             // 5. ZP Get Cookie
-            if (!empty($needsGet)) { writeAdminLog('GetCookie', 'กำลังสั่ง ZP ดึงคุกกี้ใหม่ ' . count($needsGet) . ' ไอดี'); updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 15-20 วิ)...'); } else { writeAdminLog('Info', 'คุกกี้สมบูรณ์ทั้งหมด ไม่ต้องดึงใหม่'); updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
+            if (!empty($needsGet)) { writeAdminLog('GetCookie', 'กำลังสั่ง ZP ดึงคุกกี้ใหม่ ' . count($needsGet) . ' ไอดี'); updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 1-3 นาที)...'); } else { writeAdminLog('Info', 'คุกกี้สมบูรณ์ทั้งหมด ไม่ต้องดึงใหม่'); updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
             $getKey = DB::getSetting('zp_getcookie_key', '');
             if (!empty($needsGet)) {
                 if (empty($getKey)) {
@@ -1520,7 +1520,7 @@ foreach ($deadUsers as $lu) {
                 } else {
                     require_once __DIR__ . '/zp_helpers.php';
                     $newCookies = zp_get_cookies($getKey, $needsGet, $traceId);
-                if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
+                if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); writeAdminLog('Database', 'อัพเดทฐานข้อมูล: บันทึกคุกกี้ใหม่พร้อมประทับเวลา updated_at จำนวน ' . count($newCookies) . ' ไอดี'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
                     $failedGets = [];
                     foreach ($needsGet as $lu => $p) {
                         if (isset($newCookies[$lu])) {
