@@ -893,3 +893,56 @@ document.getElementById('btnClearLogs')?.addEventListener('click', async () => {
         }
     } catch (err) {}
 });
+
+// ==========================================
+// ZP FETCH (SAVE DATA)
+// ==========================================
+function openAdminZpFetchModal() {
+    document.getElementById('adminZpFetchModal').style.display = 'flex';
+}
+function closeAdminZpFetchModal() {
+    document.getElementById('adminZpFetchModal').style.display = 'none';
+}
+
+async function submitZpFetch() {
+    const inputStr = document.getElementById('zpFetchInput').value.trim();
+    const type = document.getElementById('zpFetchType').value;
+    const logEl = document.getElementById('zpFetchLog');
+    const btn = document.getElementById('btnZpFetchSubmit');
+
+    if (!inputStr) {
+        alert('กรุณากรอกข้อมูล username:password');
+        return;
+    }
+
+    logEl.style.display = 'block';
+    logEl.textContent = 'กำลังส่งคำสั่งไปที่ ZeroPoint กรุณารอ 1-3 นาที...';
+    btn.disabled = true;
+    btn.textContent = '⏳ กำลังดึงคุกกี้...';
+
+    try {
+        const res = await fetch('/api.php?action=admin_zp_fetch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accounts: inputStr, account_type: type })
+        });
+        const data = await res.json();
+        
+        btn.disabled = false;
+        btn.textContent = '🚀 เริ่มดึงคุกกี้และบันทึก';
+
+        if (res.ok && data.success) {
+            logEl.textContent = `✅ สำเร็จ: ${data.success_count} บัญชี\n❌ ล้มเหลว: ${data.failed_count} บัญชี`;
+            if (data.failed_accounts && data.failed_accounts.length > 0) {
+                logEl.textContent += `\n\nบัญชีที่ล้มเหลว:\n${data.failed_accounts.join('\n')}`;
+            }
+            loadAdminAccounts(); // refresh table
+        } else {
+            logEl.textContent = `❌ เกิดข้อผิดพลาด: ${data.error || 'ไม่สามารถทำรายการได้'}`;
+        }
+    } catch (err) {
+        btn.disabled = false;
+        btn.textContent = '🚀 เริ่มดึงคุกกี้และบันทึก';
+        logEl.textContent = '❌ ขัดข้อง: การเชื่อมต่อขาดหาย หรือรอคำตอบนานเกินไป (ข้อมูลอาจเซฟสำเร็จในเบื้องหลัง แนะนำให้รีเฟรชตารางดูครับ)';
+    }
+}

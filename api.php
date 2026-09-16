@@ -1683,6 +1683,66 @@ foreach ($deadUsers as $lu) {
             jsonResponse(['success' => true]);
             break;
 
+        case 'admin_zp_fetch':
+            requireAdmin();
+            $input = json_decode(file_get_contents('php://input'), true);
+            $rawAccounts = $input['accounts'] ?? '';
+            $type = in_array($input['account_type'] ?? '', ['shop', 'external']) ? $input['account_type'] : 'shop';
+            
+            $lines = explode("\n", $rawAccounts);
+            $needsGet = [];
+            $rawRequests = [];
+            
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if (empty($line)) continue;
+                if (strpos($line, ':') !== false) {
+                    list($u, $p) = explode(':', $line, 2);
+                    $u = trim($u); $p = trim($p);
+                    if (!empty($u) && !empty($p)) {
+                        $needsGet[strtolower($u)] = $p;
+                        $rawRequests[strtolower($u)] = ['username' => $u, 'password' => $p];
+                    }
+                }
+            }
+            
+            if (empty($needsGet)) {
+                jsonResponse(['success' => false, 'error' => 'รูปแบบไม่ถูกต้อง กรุณาใส่ username:password']);
+            }
+            
+            $getKey = DB::getSetting('zp_getcookie_key', '');
+            if (empty($getKey)) {
+                jsonResponse(['success' => false, 'error' => 'แอดมินยังไม่ได้ตั้งค่า ZP Get Cookie API Key ในระบบ']);
+            }
+            
+            writeAdminLog('AdminFetch', 'แอดมินสั่งดึงคุกกี้ (Save Data) จำนวน ' . count($needsGet) . ' ไอดี (ประเภท ' . $type . ')');
+            
+            require_once __DIR__ . '/zp_helpers.php';
+            // call zp_get_cookies directly (without trace id)
+            $newCookies = zp_get_cookies($getKey, $needsGet, null);
+            
+            $successCount = 0;
+            $failedAccounts = [];
+            
+            foreach ($needsGet as $lu => $p) {
+                if (isset($newCookies[$lu]) && !empty($newCookies[$lu]['cookie'])) {
+                    DB::upsertAccount($rawRequests[$lu]['username'], $newCookies[$lu]['cookie'], $newCookies[$lu]['password'], '', $type);
+                    $successCount++;
+                } else {
+                    $failedAccounts[] = $rawRequests[$lu]['username'];
+                }
+            }
+            
+            writeAdminLog('AdminFetch', "ดึงคุกกี้สำเร็จ {$successCount} ไอดี, ล้มเหลว " . count($failedAccounts) . " ไอดี");
+            
+            jsonResponse([
+                'success' => true,
+                'success_count' => $successCount,
+                'failed_count' => count($failedAccounts),
+                'failed_accounts' => $failedAccounts
+            ]);
+            break;
+
         case 'admin_live_logs':
             requireAdmin();
             $logFile = __DIR__ . '/data/admin_live_log.txt';

@@ -332,6 +332,10 @@
                 <span>📥</span>
                 <span>นำเข้าแบบ Combo</span>
               </button>
+              <button class="btn btn-primary btn-sm" style="background-color:#0284c7; border-color:#0284c7;" onclick="openAdminZpFetchModal()">
+                <span>🌟</span>
+                <span>ดึงคุกกี้ผ่าน ZP (Save Data)</span>
+              </button>
               <button class="btn btn-secondary btn-sm" id="btnAdminAddSingle">
                 <span>+</span>
                 <span>เพิ่มทีละบัญชี</span>
@@ -567,5 +571,34 @@
   </div>
 
   <script src="admin.js?v=20260906_2"></script>
+
+  <!-- Admin ZP Fetch Modal -->
+  <div class="modal" id="adminZpFetchModal">
+    <div class="modal-content" style="max-width:500px;">
+      <span class="close-btn" onclick="closeAdminZpFetchModal()">×</span>
+      <h3>🌟 ดึงคุกกี้ผ่าน ZP (Save Data)</h3>
+      <p style="font-size:13px; color:var(--text-muted); margin-bottom:15px;">
+        กรอกข้อมูลรูปแบบ <b>username:password</b> (บรรทัดละ 1 บัญชี)<br>
+        ระบบจะสั่งให้ ZeroPoint ดึงคุกกี้ใหม่ให้ และเซฟลงฐานข้อมูลทันที
+      </p>
+      
+      <div style="margin-bottom:15px;">
+        <label style="display:block; font-size:13px; margin-bottom:5px; color:var(--text-dim);">ประเภทบัญชีที่จะบันทึก</label>
+        <select id="zpFetchType" class="input-modern" style="width:100%;">
+          <option value="shop">บัญชีร้านค้า (Shop)</option>
+          <option value="external">บัญชีลูกค้า (Paid/External)</option>
+        </select>
+      </div>
+
+      <textarea class="input-modern" id="zpFetchInput" rows="7" placeholder="user1:pass1&#10;user2:pass2" style="width:100%; margin-bottom:15px; font-family:monospace; font-size:13px;"></textarea>
+      
+      <div id="zpFetchLog" style="display:none; background:#0f172a; border-radius:6px; padding:10px; margin-bottom:15px; font-family:monospace; font-size:12px; color:#38bdf8; max-height:150px; overflow-y:auto; white-space:pre-wrap;"></div>
+
+      <button class="btn btn-primary" id="btnZpFetchSubmit" onclick="submitZpFetch()" style="width:100%;">
+        🚀 เริ่มดึงคุกกี้และบันทึก
+      </button>
+    </div>
+  </div>
+
 </body>
 </html>
