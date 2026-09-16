@@ -75,6 +75,21 @@
       </nav>
 
       <!-- ==================== TAB 1: SETTINGS & QUEUE MODE ==================== -->
+            <div class="tab-pane" id="tab-live-logs">
+        <div class="card">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>📡 บันทึกการทำงานระบบ (Live Logs)</h3>
+            <div>
+              <button class="btn btn-secondary btn-sm" id="btnRefreshLogs">🔄 รีเฟรช</button>
+              <button class="btn btn-danger btn-sm" id="btnClearLogs">🗑️ ล้าง Log</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div style="background:#0f172a; padding:15px; border-radius:8px; height:500px; overflow-y:auto; font-family:monospace; color:#38bdf8; font-size:13px; line-height:1.5; white-space:pre-wrap;" id="adminLiveLogsContainer">กำลังโหลดข้อมูล...</div>
+          </div>
+        </div>
+      </div>
+      
       <div id="tab-settings" class="tab-pane active">
         <div class="card" style="max-width:720px;">
           <div class="card-header">
