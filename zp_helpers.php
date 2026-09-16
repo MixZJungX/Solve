@@ -55,6 +55,14 @@ function zp_check_cookies($checkerKey, $cookiesMap) {
         
         if ($status === 200) {
             $data = json_decode($res, true);
+            // Debug log if called from admin_zp_fetch (traceId is null)
+            if ($traceId === null) {
+                $statusTxt = $data['status'] ?? 'unknown';
+                $completed = $data['completed'] ?? 0;
+                $total = $data['total'] ?? count($passwordsMap);
+                writeAdminLog('AdminFetch', "ZP Status: {$statusTxt} - {$completed}/{$total}");
+            }
+            $data = json_decode($res, true);
             if ($data['status'] === 'completed') {
                 $badTypes = ['dead', 'face_lock', 'captcha_lock', 'ban_warn'];
                 foreach ($badTypes as $type) {
@@ -103,6 +111,8 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
         $payload[] = $user . ":" . $pass;
     }
     
+    if ($traceId === null) writeAdminLog('AdminFetch', "ZP Request: เริ่มยิง API Get Cookie จำนวน " . count($payload) . " ไอดี");
+    
     $ch = curl_init('https://zeropoint.to/api/getcookie-api/submit');
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
@@ -120,13 +130,18 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
     curl_close($ch);
     
     if ($status !== 200) {
+        if ($traceId === null) writeAdminLog('AdminFetch', "ZP Request: ยิง API ล้มเหลว Status=$status, ตอบกลับ=" . substr($res, 0, 100));
         return [];
     }
     
     $data = json_decode($res, true);
-    if (empty($data['job_id'])) return [];
+    if (empty($data['job_id'])) {
+        if ($traceId === null) writeAdminLog('AdminFetch', "ZP Request: ไม่ได้ Job ID กลับมา ตอบกลับ=" . substr($res, 0, 100));
+        return [];
+    }
     
     $jobId = $data['job_id'];
+    if ($traceId === null) writeAdminLog('AdminFetch', "ZP Request: ได้ Job ID = $jobId, เริ่มรอผล...");
     
     $maxWait = 180; // 180 seconds max
     $start = time();
@@ -136,8 +151,8 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
         sleep(2);
         $ch = curl_init('https://zeropoint.to/api/getcookie-api/status/' . $jobId);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch, CURLOPT_HTTPHEADER, [
             'X-API-Key: ' . $getKey,
             'User-Agent: Mozilla/5.0'
@@ -148,15 +163,23 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
         
         if ($status === 200) {
             $data = json_decode($res, true);
+            $statusTxt = $data['status'] ?? 'unknown';
+            
+            if ($traceId === null) {
+                $completed = $data['completed'] ?? 0;
+                $total = $data['total'] ?? count($passwordsMap);
+                writeAdminLog('AdminFetch', "ZP Status Check: $statusTxt ($completed/$total)");
+            }
+            
             if ($traceId && isset($data['status'])) {
-                $statusTxt = $data['status'];
                 if ($statusTxt === 'processing' || $statusTxt === 'pending') {
                     $completed = $data['completed'] ?? 0;
                     $total = $data['total'] ?? count($passwordsMap);
                     updateTrace($traceId, "กำลังหมุนดึงคุกกี้ใหม่ (ZP: {$statusTxt} - {$completed}/{$total})...");
                 }
             }
-            if ($data['status'] === 'completed' || $data['status'] === 'failed' || $data['status'] === 'cancelled') {
+            if ($statusTxt === 'completed' || $statusTxt === 'failed' || $statusTxt === 'cancelled') {
+                if ($traceId === null) writeAdminLog('AdminFetch', "ZP เสร็จสิ้นด้วยสถานะ: $statusTxt");
                 if (!empty($data['result_files'])) {
                     $cookieFile = null;
                     foreach ($data['result_files'] as $f) {
@@ -166,6 +189,7 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
                         }
                     }
                     if ($cookieFile) {
+                        if ($traceId === null) writeAdminLog('AdminFetch', "ZP ดาวน์โหลดไฟล์: $cookieFile");
                         $ch2 = curl_init('https://zeropoint.to/api/getcookie-api/download/' . $jobId . '/' . $cookieFile);
                         curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
                         curl_setopt($ch2, CURLOPT_SSL_VERIFYPEER, false);
@@ -178,6 +202,7 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
                         $status2 = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
                         curl_close($ch2);
                         if ($status2 === 200 && !empty($res2)) {
+                            if ($traceId === null) writeAdminLog('AdminFetch', "ZP ดาวน์โหลดไฟล์สำเร็จ เริ่มแปลงผล");
                             $lines = explode("\n", $res2);
                             foreach ($lines as $line) {
                                 $line = trim($line);
@@ -186,24 +211,24 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
                                     if (count($parts) >= 2) {
                                         $u = trim($parts[0]);
                                         
-                                        // Find where the cookie starts
                                         $c = '';
                                         $p = '';
                                         foreach ($parts as $i => $part) {
                                             if ($i == 0) continue;
                                             if (strpos($part, '_|WARNING') !== false) {
-                                                $c = trim(implode(":", array_slice($parts, $i)));
-                                                $p = trim(implode(":", array_slice($parts, 1, $i - 1)));
+                                                $c = trim($part);
+                                                if ($i == 2) $p = trim($parts[1]);
                                                 break;
                                             }
                                         }
-                                        
-                                        if (empty($c)) {
-                                            // Fallback if no WARNING prefix
-                                            $c = trim(end($parts));
-                                            $p = trim(implode(":", array_slice($parts, 1, -1)));
+                                        if (empty($c) && count($parts) >= 3) {
+                                            $c = trim($parts[2]);
+                                            $p = trim($parts[1]);
                                         }
-
+                                        if (empty($p)) {
+                                            $p = $passwordsMap[strtolower($u)] ?? '';
+                                        }
+                                        
                                         if (!empty($c)) {
                                             $newCookies[strtolower($u)] = [
                                                 'password' => $p,
@@ -213,12 +238,22 @@ function zp_get_cookies($getKey, $passwordsMap, $traceId = null) {
                                     }
                                 }
                             }
+                        } else {
+                            if ($traceId === null) writeAdminLog('AdminFetch', "ZP ดาวน์โหลดไฟล์ล้มเหลว (Status: $status2)");
                         }
                     }
+                } else {
+                    if ($traceId === null) writeAdminLog('AdminFetch', "ZP ไม่มีไฟล์ result_files");
                 }
                 break;
             }
+        } else {
+            if ($traceId === null) writeAdminLog('AdminFetch', "ZP Status Check Failed: Status=$status");
         }
+    }
+    
+    if (empty($newCookies)) {
+        if ($traceId === null) writeAdminLog('AdminFetch', "สรุป: ไม่ได้คุกกี้กลับมาเลย (วนลูปจบ)");
     }
     
     return $newCookies;
