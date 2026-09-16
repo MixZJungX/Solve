@@ -131,8 +131,6 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
     if (res.ok && data.success) {
       showToast('ส่งงานสำเร็จ! กำลังเริ่มแก้แคปช่า...', 'success');
       startLiveTracking(data.data.job_id, data.data);
-    } else {
-      document.getElementById('customerJobSection').style.display = 'none';
     } else if (data.requires_login) {
       // External (paid) account requires member login
       showToast('บัญชีนี้เป็นประเภทชำระเงิน กรุณาเข้าสู่ระบบสมาชิกก่อน', 'error');
@@ -151,6 +149,7 @@ document.getElementById('formCustomerSubmit')?.addEventListener('submit', async 
       if (typeof switchServiceTab === 'function') switchServiceTab('face');
       if (typeof switchFaceSubTab === 'function') switchFaceSubTab('topup');
     } else {
+      document.getElementById('customerJobSection').style.display = 'none';
       showToast(data.error || 'ไม่สามารถส่งงานได้ กรุณาติดต่อแอดมิน', 'error');
     }
   } catch (err) {
