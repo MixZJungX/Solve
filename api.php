@@ -492,6 +492,7 @@ try {
                 $resZp = json_decode($raw, true) ?? [];
                 
                 if ($httpCode === 200 && !empty($resZp['job_id'])) {
+                    writeAdminLog('Success', 'ส่งงานแคปช่าสำเร็จ JobID: ' . $resZp['job_id']);
                     $jobId = $resZp['job_id'];
                     DB::saveJob([
                         'id' => $jobId,
@@ -524,6 +525,7 @@ try {
                         ]
                     ], 201);
                 } else {
+                    writeAdminLog('Error', 'ส่งงานแคปช่าล้มเหลว: ' . ($resZp['error'] ?? 'API Error'));
                     jsonResponse(['success' => false, 'error' => $resZp['error'] ?? 'เกิดข้อผิดพลาดในการเชื่อมต่อ ZeroPoint'], $httpCode ?: 500);
                 }
             } else {
@@ -1584,12 +1586,15 @@ try {
 
             $resp = json_decode($raw, true);
             if ($httpCode !== 200 || empty($resp['job_id'])) {
+                $errMsg = $resp['error'] ?? $raw ?? 'ZeroPoint API Error';
+                writeAdminLog('Error', 'ส่งงานสแกนหน้าล้มเหลว: ' . $errMsg);
                 // Refund credits if API call failed
                 DB::addMemberCredits((int)$_SESSION['member_id'], $creditsNeeded);
                 $errMsg = $resp['error'] ?? $raw ?? 'ZeroPoint API Error';
                 jsonResponse(['success' => false, 'error' => $errMsg], $httpCode ?: 502);
             }
 
+            writeAdminLog('Success', 'ส่งงานสแกนหน้าสำเร็จ JobID: ' . $resp['job_id']);
             $result = [
                 'job_id' => $resp['job_id'],
                 'total_accounts' => count($lines),

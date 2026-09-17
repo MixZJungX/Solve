@@ -1,0 +1,74 @@
+e, job);
+}
+
+function updateProgressBarUI(pct, isFinished = false, job = null) {
+  const rounded = Math.min(100, Math.floor(pct));
+  const bar = document.getElementById('custProgressBar');
+  const percentEl = document.getElementById('custProgressPercent');
+  const stageEl = document.getElementById('custProgressStage');
+  const hintEl = document.getElementById('custProgressHint');
+  const dot = document.getElementById('custProgressDot');
+
+  let sCount = Number(job?.success_count ?? 0);
+  let fCount = Number(job?.fail_count ?? 0);
+  let skCount = Number(job?.skip_count ?? 0);
+
+  if (job?.accounts_detail && Array.isArray(job.accounts_detail) && job.accounts_detail.length > 0) {
+    let accS = 0, accF = 0, accSk = 0;
+    for (const a of job.accounts_detail) {
+      const st = String(a.status || '').trim().toUpperCase();
+      if (['COMPLETED', 'SUCCESS'].includes(st)) accS++;
+      else if (['SKIP', 'SKIPPED', 'NO_CAPTCHA'].includes(st)) accSk++;
+      else if (['FAILED', 'FAIL', 'ERROR', 'COOKIE_BROKEN', 'FACE_LOCK', 'FACELOCK', 'WRONG_PASSWORD', 'INVALID', 'INV', 'TWO_STEP', '2STEP', '2FA', 'BANNED', 'BAN'].includes(st)) accF++;
+      else if (st && !['PENDING', 'PROCESSING', 'QUEUED'].includes(st)) accF++;
+    }
+    if (accS > 0 || accF > 0 || accSk > 0) {
+      sCount = accS;
+      fCount = accF;
+      skCount = accSk;
+    }
+  }
+
+  const isAllFailed = isFinished && ((fCount > 0 && sCount === 0 && skCount === 0) || (job?.status === 'FAILED' && sCount === 0 && skCount === 0));
+  const isAllSkipped = isFinished && skCount > 0 && sCount === 0 && fCount === 0;
+  const isPartial = isFinished && sCount > 0 && fCount > 0;
+
+  if (bar) {
+    bar.style.width = `${rounded}%`;
+    bar.classList.remove('completed', 'failed', 'skipped', 'partial');
+    if (isFinished) {
+      if (isAllFailed) bar.classList.add('failed');
+      else if (isAllSkipped) bar.classList.add('skipped');
+      else if (isPartial) bar.classList.add('partial');
+      else bar.classList.add('completed');
+    }
+  }
+
+  if (percentEl) {
+    percentEl.textContent = `${rounded}%`;
+    if (isFinished) {
+      if (isAllFailed) percentEl.style.color = 'var(--red)';
+      else if (isAllSkipped) percentEl.style.color = '#2dd4bf';
+      else if (isPartial) percentEl.style.color = 'var(--yellow)';
+      else percentEl.style.color = 'var(--green)';
+    } else {
+      percentEl.style.color = 'var(--lemon)';
+    }
+  }
+
+  // Find matching stage
+  let matchedStage = ADHD_STAGES[0];
+  for (const s of ADHD_STAGES) {
+    if (rounded >= s.at) {
+      matchedStage = s;
+    }
+  }
+
+  if (stageEl) {
+    if (isFinished) {
+      if (isAllFailed) stageEl.textContent = '❌ แก้แคปช่าไม่สำเร็จ (พบข้อผิดพลาดที่ตัวไอดี)';
+      else if (isAllSkipped) stageEl.textContent = '✨ ตรวจสอบเสร็จสิ้น (ไม่พบด่านแคปช่า)';
+      else if (isPartial) stageEl.textContent = `⚠️ ดำเนินการเสร็จบางส่วน (${sCount} ผ่าน / ${fCount} ไม่ผ่าน)`;
+      else stageEl.textContent = '🎉 ดำเนินการเสร็จสิ้นเรียบร้อยแล้ว!';
+    } else {
+      stageEl.textC

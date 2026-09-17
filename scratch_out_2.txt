@@ -1,0 +1,99 @@
+function getAccountStatusInfo(status) {
+  const st = String(status || 'PENDING').trim().toUpperCase();
+
+  if (st === 'COMPLETED' || st === 'SUCCESS') {
+    return {
+      cls: 'status-COMPLETED',
+      text: 'สำเร็จ ✅',
+      title: 'แก้แคปช่าสำเร็จ',
+      desc: 'แก้แคปช่าผ่านเรียบร้อย สามารถเข้าเล่นแมพได้ทันที',
+      solution: 'สามารถเปิดเกม Roblox เข้าเล่นได้เลย'
+    };
+  }
+
+  if (st === 'PROCESSING' || st === 'RUNNING' || st === 'SOLVING') {
+    return {
+      cls: 'status-PROCESSING',
+      text: 'กำลังแก้... ⚡',
+      title: 'กำลังแก้แคปช่า',
+      desc: 'AI กำลังวิเคราะห์โจทย์รูปภาพและส่งคำตอบ',
+      solution: 'กรุณารอสักครู่ ห้ามปิดหน้าต่างนี้'
+    };
+  }
+
+  if (st === 'PENDING' || st === 'QUEUED' || st === 'WAITING') {
+    return {
+      cls: 'status-PENDING',
+      text: 'รอคิว... ⏳',
+      title: 'อยู่ในคิวรอเริ่ม',
+      desc: 'อยู่ในคิวรอระบบเริ่มประมวลผลตามลำดับ',
+      solution: 'ระบบจะเริ่มทำงานอัตโนมัติเมื่อถึงคิว'
+    };
+  }
+
+    if (st === 'COOKIE_BROKEN' || st === 'INVALID' || st === 'INV' || st === 'WRONG_PASSWORD' || st === 'EXPIRED' || st === 'UNAUTHORIZED') {
+    return {
+      cls: 'status-COOKIE_BROKEN',
+      text: 'Cookie หมดอายุ 🔑',
+      title: 'Cookie หมดอายุ / รหัสถูกเปลี่ยน',
+      desc: 'ติดต่อแอดมินส่ง ชื่อ:รหัส และรับการอัพเดทใหม่',
+      solution: 'แอดมินจะทำการแก้ไขรหัสผ่านและคุกกี้ให้ใหม่'
+    };
+  }
+
+  if (st === 'FACE_LOCK' || st === 'FACELOCK' || st === 'FACE') {
+    return {
+      cls: 'status-FACE_LOCK',
+      text: 'ติดสแกนหน้า (Face Lock) 👤',
+      title: 'ติดยืนยันตัวตนด้วยใบหน้า (Face Lock)',
+      desc: 'บัญชีนี้ติดระบบยืนยันตัวตนสแกนใบหน้าของ Roblox ซึ่ง AI ภายนอกไม่สามารถผ่านด่านนี้แทนได้',
+      solution: 'เจ้าของไอดีต้องล็อกอินผ่านมือถือหรือคอมเพื่อสแกนใบหน้าปลดล็อคด้วยตนเองก่อน'
+    };
+  }
+
+  if (st === 'TWO_STEP' || st === '2STEP' || st === '2FA' || st === 'TWOSTEP') {
+    return {
+      cls: 'status-TWO_STEP',
+      text: 'ติดรหัส 2 ชั้น (2-Step Verification) 📱',
+      title: 'ติดรหัสยืนยัน 2 ขั้นตอน (2FA)',
+      desc: 'บัญชีเปิดระบบความปลอดภัย 2 ชั้น (Authenticator / Email OTP) ทำให้ระบบภายนอกเข้าล็อกอินไม่ได้',
+      solution: 'กรุณาเข้าไปปิด 2-Step Verification ในการตั้งค่า Roblox ชั่วคราวก่อนส่งแก้'
+    };
+  }
+
+  if (st === 'BANNED' || st === 'BAN' || st === 'TERMINATED' || st === 'RESTRICTED') {
+    return {
+      cls: 'status-BANNED',
+      text: 'บัญชีถูกแบน (Banned) ⛔',
+      title: 'บัญชีถูกระงับการใช้งาน',
+      desc: 'บัญชีนี้ถูกทาง Roblox สั่งระงับหรือแบนชั่วคราว/ถาวร ไม่สามารถเข้าใช้งานได้',
+      solution: 'ไม่สามารถดำเนินการได้ กรุณาติดต่อฝ่ายสนับสนุนของ Roblox'
+    };
+  }
+
+  if (st === 'RATE_LIMIT') {
+    return {
+      cls: 'status-PENDING',
+      text: 'ติด Rate Limit ชั่วคราว ⏳',
+      title: 'ติดจำกัดความถี่คำขอ',
+      desc: 'มีการส่งคำขอแก้แคปช่าถี่เกินไป ระบบกำลังเว้นช่วงเพื่อความปลอดภัยและจะลองใหม่',
+      solution: 'กรุณารอสักครู่ ระบบจะทำงานต่ออัตโนมัติ'
+    };
+  }
+
+  if (st === 'SKIP' || st === 'SKIPPED' || st === 'NO_CAPTCHA') {
+    return {
+      cls: 'status-SKIP',
+      text: 'ไม่ต้องแก้ (ไม่มีแคปช่า / ผ่านแล้ว) ✨',
+      title: 'ไม่มีแคปช่าติดค้าง',
+      desc: 'ระบบตรวจพบว่าบัญชีนี้ไม่มีด่านแคปช่าติดค้าง หรือผ่านการแก้ไขแล้ว สามารถเข้าเล่นเกมได้ทันที',
+      solution: 'สามารถเปิดเกม Roblox และเข้าเล่นได้ทันที'
+    };
+  }
+
+  if (st === 'FAILED' || st === 'FAIL' || st === 'ERROR') {
+    return {
+      cls: 'status-FAILED',
+      text: 'แก้ไม่สำเร็จ ❌',
+      title: 'AI ไม่สามารถแก้โจทย์ได้',
+      desc: 'AI ทำการแก้โจทย์แคปช่าไม่สำเร็จ หรือระบบรักษ

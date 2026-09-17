@@ -1,0 +1,9 @@
+function writeAdminLog($action, $message) {
+writeAdminLog('Submit', 'ลูกค้ากดเริ่มแก้แคปช่า จำนวน ' . (is_array($rawUsernames) ? count($rawUsernames) : 1) . '
+writeAdminLog('Solver', 'เตรียมส่งงานไปที่ ' . strtoupper($provider) . ' จำนวน ' . count($jobAccounts) . ' ไอดี');
+writeAdminLog('Success', 'ส่งงานแคปช่าสำเร็จ JobID: ' . $resZp['job_id']);
+writeAdminLog('Error', 'ส่งงานแคปช่าล้มเหลว: ' . ($resZp['error'] ?? 'API Error'));
+writeAdminLog('Error', 'ส่งงานสแกนหน้าล้มเหลว: ' . $errMsg);
+writeAdminLog('Success', 'ส่งงานสแกนหน้าสำเร็จ JobID: ' . $resp['job_id']);
+writeAdminLog('AdminFetch', 'แอดมินสั่งดึงคุกกี้ (Save Data) จำนวน ' . count($needsGet) . ' ไอดี (ประเภท ' . $type
+writeAdminLog('AdminFetch', "ดึงคุกกี้สำเร็จ {$successCount} ไอดี, ล้มเหลว " . count($failedAccounts) . " ไอดี");

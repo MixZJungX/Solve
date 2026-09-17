@@ -1,0 +1,28 @@
+st === 'FAILED' || st === 'FAIL' || st === 'ERROR') {
+    return {
+      cls: 'status-FAILED',
+      text: 'แก้ไม่สำเร็จ ❌',
+      title: 'AI ไม่สามารถแก้โจทย์ได้',
+      desc: 'AI ทำการแก้โจทย์แคปช่าไม่สำเร็จ หรือระบบรักษาความปลอดภัยของ Roblox ปฏิเสธคำตอบ',
+      solution: 'สามารถกดลองส่งใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบเพื่อตรวจสอบ'
+    };
+  }
+
+  // Generic Fallback
+  return {
+    cls: 'status-FAILED',
+    text: `${status} ❌`,
+    title: `ข้อผิดพลาด: ${status}`,
+    desc: 'เกิดข้อผิดพลาดในการตรวจสอบบัญชี หรือไม่ผ่านการตรวจสอบจากเซิร์ฟเวอร์',
+    solution: 'กรุณาตรวจสอบความถูกต้องของบัญชี และลองใหม่อีกครั้ง'
+  };
+}
+
+function resetCustomerJobSection() {
+  activeJobId = null;
+  if (pollTimer) clearInterval(pollTimer);
+  if (progressTimer) clearInterval(progressTimer);
+  const section = document.getElementById('customerJobSection');
+  if (section) section.style.display = 'none';
+  const finishEl = document.getElementById('custFinishMsg');
+  if (finishEl) finishEl.style.display = 'none';
