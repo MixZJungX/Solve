@@ -545,6 +545,8 @@ try {
                 if ($res['status'] === 201) {
                     $jobData = $res['data']['data'] ?? [];
                     $jobId = $jobData['id'] ?? '';
+                    writeAdminLog('Success', 'ส่งงานแคปช่าสำเร็จ JobID: ' . $jobId);
+                    writeAdminLog('Success', 'ส่งงานแคปช่าสำเร็จ JobID: ' . $jobId);
 
                     DB::saveJob([
                         'id' => $jobId,
@@ -575,12 +577,14 @@ try {
                         ]
                     ], 201);
                 } elseif ($res['status'] === 409) {
+                    writeAdminLog('Error', 'ส่งงานแคปช่าล้มเหลว: ติดคิวเดิม (409 Conflict)');
                 jsonResponse([
                     'success' => false,
                     'error' => 'บัญชีที่คุณระบุกำลังอยู่ในคิวทำงานรอบก่อนหน้า กรุณารอ 1-2 นาทีแล้วลองใหม่อีกครั้งครับ'
                 ], 409);
                 } else {
                     $msg = $res['data']['message'] ?? $res['error'] ?? 'เกิดข้อผิดพลาดในการส่งงาน';
+                    writeAdminLog('Error', 'ส่งงานแคปช่าล้มเหลว: ' . $msg);
                     jsonResponse(['success' => false, 'error' => $msg], 500);
                 }
             } // END HIGHSPEC LOGIC
@@ -622,6 +626,12 @@ try {
                     $skC = $skipCount;
                     $iC = $invalidCount;
                     $fC = $systemFailCount;
+
+                    $newZpStatus = $zpStatus;
+                    $oldZpStatus = $localJobCheck['status'] ?? 'PENDING';
+                    if (in_array($newZpStatus, ['COMPLETED', 'FAILED']) && !in_array($oldZpStatus, ['COMPLETED', 'FAILED'])) {
+                        writeAdminLog('Result', "สรุปผลงาน JobID: {$id} | สำเร็จ: {$successCount}, ล้มเหลว: {$failCount}");
+                    }
 
                     foreach ($accList as $u) {
                         if ($sC > 0) {
@@ -728,6 +738,22 @@ try {
                             DB::updateAccountStatus($u, 'COMPLETED');
                         }
                     }
+                }
+
+                // Log final result if just finished
+                $newStatus = $info['status'] ?? 'PENDING';
+                $oldStatus = $localJobCheck['status'] ?? 'PENDING';
+                
+                if (in_array(strtoupper($newStatus), ['COMPLETED', 'FAILED']) && !in_array(strtoupper($oldStatus), ['COMPLETED', 'FAILED'])) {
+                    $logMsg = "สรุปผลงาน JobID: {$id} | สำเร็จ: {$successCount}, ล้มเหลว: {$failCount}";
+                    if (!empty($accountsDetail)) {
+                        $details = [];
+                        foreach ($accountsDetail as $ad) {
+                            $details[] = $ad['username'] . '=' . $ad['status'];
+                        }
+                        $logMsg .= " | " . implode(', ', $details);
+                    }
+                    writeAdminLog('Result', $logMsg);
                 }
 
                 // Update local DB
@@ -1208,6 +1234,12 @@ try {
                     $skC = $skipCount;
                     $iC = $invalidCount;
                     $fC = $systemFailCount;
+
+                    $newZpStatus = $zpStatus;
+                    $oldZpStatus = $localJobCheck['status'] ?? 'PENDING';
+                    if (in_array($newZpStatus, ['COMPLETED', 'FAILED']) && !in_array($oldZpStatus, ['COMPLETED', 'FAILED'])) {
+                        writeAdminLog('Result', "สรุปผลงาน JobID: {$id} | สำเร็จ: {$successCount}, ล้มเหลว: {$failCount}");
+                    }
 
                     foreach ($accList as $u) {
                         if ($sC > 0) {

@@ -1,0 +1,13 @@
+], 201);
+                } else {
+                    writeAdminLog('Error', 'ส่งงานแคปช่าล้มเหลว: ' . ($resZp['error'] ?? 'API Error'));
+                    jsonResponse(['success' => false, 'error' => $resZp['error'] ?? 'เกิดข้อผิดพลาดในการเชื่อมต่อ ZeroPoint'], $httpCode ?: 500);
+                }
+            } else {
+                // HIGHSPEC LOGIC
+                $payload = [
+                    'note' => $note,
+                    'accounts' => $jobAccounts
+                ];
+
+          

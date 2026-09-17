@@ -1,0 +1,11 @@
+], 201);
+                } elseif ($res['status'] === 409) {
+                jsonResponse([
+                    'success' => false,
+                    'error' => 'บัญชีที่คุณระบุกำลังอยู่ในคิวทำงานรอบก่อนหน้า กรุณารอ 1-2 นาทีแล้วลองใหม่อีกครั้งครับ'
+                ], 409);
+                } else {
+                    $msg = $res['data']['message'] ?? $res['error'] ?? 'เกิดข้อผิดพลาดในการส่งงาน';
+                    jsonResponse(['success' => false, 'error' => $msg], 500);
+                }
+   
