@@ -1,0 +1,32 @@
+            <div style="font-size:11px;font-weight:700;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;letter-spacing:0.5px;text-align:left;">
+                📋 สาเหตุและวิธีแก้ไขของแต่ละไอดี:
+              </div>
+              ${failedItemsHtml}
+            </div>
+
+            <div style="background:rgba(239,68,68,0.18);border-left:4px solid #ef4444;padding:12px 14px;border-radius:6px;font-size:12px;color:#fecaca;line-height:1.6;margin-bottom:16px;text-align:left;">
+              📌 <b>สรุปเหตุผล:</b> Cookie หมดอายุ / รหัสถูกเปลี่ยน (ติดต่อแอดมินส่ง ชื่อ:รหัส และรับการอัพเดทใหม่)
+            </div>
+
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="font-size:13px;cursor:pointer;padding:10px 20px;font-weight:600;">
+              🔄 ตรวจสอบไอดีอื่น / ลองใหม่อีกครั้ง
+            </button>
+          `;
+          showToast('แก้แคปช่าไม่สำเร็จ กรุณาดูสาเหตุและคำแนะนำด้านล่าง', 'error');
+        } else if (isAllSkipped) {
+          finishEl.style.background = 'rgba(20, 184, 166, 0.12)';
+          finishEl.style.borderColor = 'rgba(45, 212, 191, 0.45)';
+          finishEl.style.color = '#2dd4bf';
+          finishEl.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;margin-bottom:8px;color:#2dd4bf;">
+              <span style="font-size:22px;">✨</span>
+              <span>บัญชีนี้ไม่มีแคปช่าติดค้าง หรือผ่านการแก้ไขแล้ว!</span>
+            </div>
+            <div style="font-size:13px;opacity:0.95;line-height:1.6;margin-bottom:14px;text-align:left;">
+              ระบบตรวจพบว่าบัญชีนี้เข้าเล่นเกมได้ตามปกติ ไม่พบด่านแคปช่า Roblox ที่ต้องแก้ สามารถเปิดเกมและเข้าเล่นแมพได้ทันทีครับ
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="font-size:12px;cursor:pointer;padding:8px 18px;">
+              ✨ ตรวจสอบไอดีอื่น / เริ่มรายการใหม่
+            </button>
+          `;
+          showToast('บัญชีนี้ไม่มีแคปช่า พ

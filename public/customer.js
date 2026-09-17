@@ -466,6 +466,13 @@ async function pollJobStatus() {
                     <div style="font-size:12px;color:#fef08a;line-height:1.5;">
                       💡 <b>วิธีแก้ไข:</b> ${info.solution}
                     </div>
+                    ${info.cls === 'status-FACE_LOCK' ? `
+                    <div style="margin-top:10px;">
+                      <button onclick="switchServiceTab('face')" style="background:linear-gradient(135deg, #a855f7 0%, #7e22ce 100%);color:#fff;border:none;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 15px rgba(168,85,247,0.3);transition:all 0.2s;">
+                        👤 ไปหน้าแก้สแกนหน้า (Face Unlock) ➜
+                      </button>
+                    </div>
+                    ` : ''}
                   </div>
                 `;
               }).join('')
@@ -496,9 +503,7 @@ async function pollJobStatus() {
               ${failedItemsHtml}
             </div>
 
-            <div style="background:rgba(239,68,68,0.18);border-left:4px solid #ef4444;padding:12px 14px;border-radius:6px;font-size:12px;color:#fecaca;line-height:1.6;margin-bottom:16px;text-align:left;">
-              📌 <b>สรุปเหตุผล:</b> Cookie หมดอายุ / รหัสถูกเปลี่ยน (ติดต่อแอดมินส่ง ชื่อ:รหัส และรับการอัพเดทใหม่)
-            </div>
+
 
             <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="font-size:13px;cursor:pointer;padding:10px 20px;font-weight:600;">
               🔄 ตรวจสอบไอดีอื่น / ลองใหม่อีกครั้ง
@@ -651,7 +656,7 @@ function getAccountStatusInfo(status) {
       text: 'ติดสแกนหน้า (Face Lock) 👤',
       title: 'ติดยืนยันตัวตนด้วยใบหน้า (Face Lock)',
       desc: 'บัญชีนี้ติดระบบยืนยันตัวตนสแกนใบหน้าของ Roblox ซึ่ง AI ภายนอกไม่สามารถผ่านด่านนี้แทนได้',
-      solution: 'เจ้าของไอดีต้องล็อกอินผ่านมือถือหรือคอมเพื่อสแกนใบหน้าปลดล็อคด้วยตนเองก่อน'
+      solution: 'สามารถใช้บริการ "สมาชิก Face Unlock" ที่เมนูด้านบน เพื่อให้ระบบช่วยสแกนหน้าและปลดล็อคให้อัตโนมัติได้เลยครับ'
     };
   }
 
