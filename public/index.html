@@ -407,6 +407,10 @@
         <span class="title">🙂 สแกนหน้า</span>
         <span class="sub">ปลดล็อค</span>
       </button>
+      <button class="lemon-tab" id="tabBtnTools" onclick="switchServiceTab('tools')">
+        <span class="title">🛠️ เครื่องมือ</span>
+        <span class="sub">คุกกี้ / สถานะ</span>
+      </button>
       
     </div>
 
@@ -735,6 +739,26 @@
       </div><!-- /faceMainArea -->
 
     </div><!-- /paneFace -->
+
+    <!-- ==================== PANE 3: TOOLS ==================== -->
+    <div class="pane" id="paneTools">
+      <div class="card" style="margin-bottom:20px;">
+        <h3 style="margin-bottom:10px;">🌟 เช็คคุกกี้ (Check Cookie)</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">ตรวจสอบสถานะคุกกี้ในระบบว่ายังใช้งานได้หรือไม่ ใส่เฉพาะ Username (บรรทัดละ 1 บัญชี)</p>
+        <textarea id="toolCheckInput" class="input-modern" rows="4" placeholder="username1&#10;username2" style="width:100%; margin-bottom:10px;"></textarea>
+        <button class="btn btn-secondary" onclick="toolCheckCookies()" style="width:100%;" id="btnToolCheck">🔍 ตรวจสอบคุกกี้</button>
+        <div id="toolCheckLog" style="display:none; background:#0f172a; border-radius:6px; padding:10px; margin-top:10px; font-family:monospace; font-size:12px; color:#38bdf8; white-space:pre-wrap;"></div>
+      </div>
+
+      <div class="card">
+        <h3 style="margin-bottom:10px;">🌟 ดึงคุกกี้ใหม่ (Get Cookie)</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">ดึงคุกกี้ใหม่ผ่าน ZP และบันทึกลงระบบอัตโนมัติ ใส่รูปแบบ Username:Password (บรรทัดละ 1 บัญชี)</p>
+        <textarea id="toolGetInput" class="input-modern" rows="4" placeholder="user1:pass1&#10;user2:pass2" style="width:100%; margin-bottom:10px;"></textarea>
+        <button class="btn btn-primary" onclick="toolGetCookies()" style="width:100%;" id="btnToolGet">🚀 เริ่มดึงคุกกี้</button>
+        <div id="toolGetLog" style="display:none; background:#0f172a; border-radius:6px; padding:10px; margin-top:10px; font-family:monospace; font-size:12px; color:#38bdf8; white-space:pre-wrap;"></div>
+      </div>
+    </div><!-- /paneTools -->
+
     </div>
 
     <!-- Features -->
@@ -872,6 +896,6 @@
       }
     });
   </script>
-  <script src="customer.js?v=20260913_1"></script>
+  <script src="customer.js?v=20260917_4"></script>
 </body>
 </html>

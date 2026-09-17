@@ -228,6 +228,99 @@ try {
             jsonResponse(['success' => true]);
             break;
 
+        case 'tool_check_cookies':
+            session_write_close();
+            $input = json_decode(file_get_contents('php://input'), true);
+            $rawUsernames = $input['usernames'] ?? [];
+            if (is_string($rawUsernames)) {
+                $rawUsernames = preg_split("/[
+
+,]+/", $rawUsernames);
+            }
+            $usernamesToQuery = [];
+            foreach ($rawUsernames as $line) {
+                $u = trim($line);
+                if ($u !== '') $usernamesToQuery[] = strtolower($u);
+            }
+            $usernamesToQuery = array_values(array_unique($usernamesToQuery));
+            if (empty($usernamesToQuery)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละครอย่างน้อย 1 บัญชี'], 400);
+            }
+            $accountMap = DB::getAccountsByUsernames($usernamesToQuery);
+            $needsCheck = [];
+            $notFound = [];
+            foreach ($usernamesToQuery as $u) {
+                if (isset($accountMap[$u]) && !empty($accountMap[$u]['cookie'])) {
+                    $needsCheck[$u] = $accountMap[$u]['cookie'];
+                } else {
+                    $notFound[] = $u;
+                }
+            }
+            $checkerKey = DB::getSetting('zp_checker_key', '');
+            if (empty($checkerKey)) {
+                jsonResponse(['success' => false, 'error' => 'ระบบหลังบ้านไม่ได้ตั้งค่า ZP Checker API Key'], 503);
+            }
+            $deadUsers = [];
+            if (!empty($needsCheck)) {
+                require_once __DIR__ . '/zp_helpers.php';
+                $deadUsers = zp_check_cookies($checkerKey, $needsCheck);
+            }
+            $alive = array_diff(array_keys($needsCheck), $deadUsers);
+            jsonResponse([
+                'success' => true,
+                'alive' => array_values($alive),
+                'dead' => array_values($deadUsers),
+                'not_found' => $notFound
+            ]);
+            break;
+
+        case 'tool_get_cookies':
+            session_write_close();
+            $input = json_decode(file_get_contents('php://input'), true);
+            $rawAccounts = $input['accounts'] ?? [];
+            if (is_string($rawAccounts)) {
+                $rawAccounts = preg_split("/[
+
+,]+/", $rawAccounts);
+            }
+            $needsGet = [];
+            $originalNames = [];
+            foreach ($rawAccounts as $line) {
+                if (strpos($line, ':') !== false) {
+                    list($u, $p) = explode(':', $line, 2);
+                    $u = trim($u); $p = trim($p);
+                    if ($u !== '' && $p !== '') {
+                        $needsGet[strtolower($u)] = $p;
+                        $originalNames[strtolower($u)] = $u;
+                    }
+                }
+            }
+            if (empty($needsGet)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุ Username:Password อย่างน้อย 1 บัญชี'], 400);
+            }
+            $getKey = DB::getSetting('zp_getcookie_key', '');
+            if (empty($getKey)) {
+                jsonResponse(['success' => false, 'error' => 'ระบบหลังบ้านไม่ได้ตั้งค่า ZP Get Cookie API Key'], 503);
+            }
+            require_once __DIR__ . '/zp_helpers.php';
+            $newCookies = zp_get_cookies($getKey, $needsGet, null);
+            $successAccounts = [];
+            $failedAccounts = [];
+            foreach ($needsGet as $lu => $p) {
+                if (isset($newCookies[$lu]) && !empty($newCookies[$lu]['cookie'])) {
+                    DB::upsertAccount($originalNames[$lu], $newCookies[$lu]['cookie'], $newCookies[$lu]['password'], '', 'external');
+                    $successAccounts[] = $originalNames[$lu];
+                } else {
+                    $failedAccounts[] = $originalNames[$lu];
+                }
+            }
+            jsonResponse([
+                'success' => true,
+                'success_accounts' => $successAccounts,
+                'failed_accounts' => $failedAccounts
+            ]);
+            break;
+
         case 'customer_submit':
             session_write_close();
             $input = json_decode(file_get_contents('php://input'), true);
@@ -270,65 +363,15 @@ try {
             // Fetch accounts from local DB
             $accountMap = DB::getAccountsByUsernames($usernamesToQuery);
             
-            // --- AUTO HEAL COOKIES FOR CAPTCHA ---
-            $needsCheck = [];
-            $needsGet = [];
-            
-            foreach ($parsedRequests as $lu => $req) {
-                $acc = $accountMap[$lu] ?? null;
-                if ($acc && !empty($acc['cookie'])) {
-                    $needsCheck[$lu] = $acc['cookie'];
-                } else if ($req['password'] !== null && $req['password'] !== '') {
-                    $needsGet[$lu] = $req['password'];
+            // Check if all requested accounts have a cookie in DB
+            $invalidAccounts = [];
+            foreach ($usernamesToQuery as $u) {
+                if (empty($accountMap[$u]) || empty($accountMap[$u]['cookie'])) {
+                    $invalidAccounts[] = $u;
                 }
             }
-
-            updateTrace($traceId, 'กำลังตรวจสอบสถานะคุกกี้ปัจจุบัน (ใช้เวลา 2-10 วิ)...');
-            writeAdminLog('Check', 'กำลังตรวจสอบคุกกี้กับ ZP Cookie Checker...');
-$checkerKey = DB::getSetting('zp_checker_key', '');
-            if (!empty($needsCheck) && !empty($checkerKey)) {
-                require_once __DIR__ . '/zp_helpers.php';
-                $deadUsers = zp_check_cookies($checkerKey, $needsCheck);
-                writeAdminLog('Check', 'ตรวจเสร็จสิ้น พบตาย ' . count($deadUsers) . ' ไอดี (จากทั้งหมด ' . count($needsCheck) . ')');
-foreach ($deadUsers as $lu) {
-                    if (!empty($parsedRequests[$lu]['password'])) {
-                        $needsGet[$lu] = $parsedRequests[$lu]['password'];
-                    }
-                    unset($needsCheck[$lu]);
-                    if (empty($parsedRequests[$lu]['password'])) {
-                        unset($accountMap[$lu]); 
-                    }
-                }
-            }
-
-            if (!empty($needsGet)) { writeAdminLog('GetCookie', 'กำลังสั่ง ZP ดึงคุกกี้ใหม่ ' . count($needsGet) . ' ไอดี'); updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 1-3 นาที)...'); } else { writeAdminLog('Info', 'คุกกี้สมบูรณ์ทั้งหมด ไม่ต้องดึงใหม่'); updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
-            $getKey = DB::getSetting('zp_getcookie_key', '');
-            if (!empty($needsGet) && !empty($getKey)) {
-                require_once __DIR__ . '/zp_helpers.php';
-                $newCookies = zp_get_cookies($getKey, $needsGet, $traceId);
-                if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); writeAdminLog('Database', 'อัพเดทฐานข้อมูล: บันทึกคุกกี้ใหม่พร้อมประทับเวลา updated_at จำนวน ' . count($newCookies) . ' ไอดี'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
-                $failedGets = [];
-                foreach ($needsGet as $lu => $p) {
-                    if (isset($newCookies[$lu])) {
-                        DB::upsertAccount(
-                            $parsedRequests[$lu]['username'],
-                            $newCookies[$lu]['cookie'],
-                            $newCookies[$lu]['password'],
-                            '',
-                            'external'
-                        );
-                        $accountMap[$lu] = [
-                            'username' => $parsedRequests[$lu]['username'],
-                            'password' => $newCookies[$lu]['password'],
-                            'cookie' => $newCookies[$lu]['cookie'],
-                            'account_type' => 'external'
-                        ];
-                    } else {
-                        $failedGets[] = $parsedRequests[$lu]['username'];
-                        unset($accountMap[$lu]);
-                    }
-                }
-                if (!empty($failedGets)) { writeAdminLog('Error', 'ดึงคุกกี้ใหม่ล้มเหลว: ' . implode(', ', $failedGets)); jsonResponse(['success' => false, 'error' => 'ดึงคุกกี้ใหม่ล้มเหลวที่บัญชี: ' . implode(', ', $failedGets) . ' (รหัสผ่านอาจผิด หรือระบบ Roblox มีปัญหา)'], 400); }
+            if (!empty($invalidAccounts)) {
+                jsonResponse(['success' => false, 'error' => 'บัญชีเหล่านี้ไม่มีคุกกี้ในระบบ หรือยังไม่ได้ถูกเพิ่ม: ' . implode(', ', $invalidAccounts)], 400);
             }
             
             // Re-build $usernames for the next section which expects original case usernames
@@ -1490,63 +1533,7 @@ foreach ($deadUsers as $lu) {
                 }
             }
 
-            // 4. ZP Cookie Checker
-            updateTrace($traceId, 'กำลังตรวจสอบสถานะคุกกี้ปัจจุบัน (ใช้เวลา 2-10 วิ)...');
-            writeAdminLog('Check', 'กำลังตรวจสอบคุกกี้กับ ZP Cookie Checker...');
-$checkerKey = DB::getSetting('zp_checker_key', '');
-            if (!empty($needsCheck) && !empty($checkerKey)) {
-                require_once __DIR__ . '/zp_helpers.php';
-                $deadUsers = zp_check_cookies($checkerKey, $needsCheck);
-                writeAdminLog('Check', 'ตรวจเสร็จสิ้น พบตาย ' . count($deadUsers) . ' ไอดี (จากทั้งหมด ' . count($needsCheck) . ')');
-foreach ($deadUsers as $lu) {
-                    if (!empty($parsedRequests[$lu]['password'])) {
-                        $needsGet[$lu] = $parsedRequests[$lu]['password'];
-                    } else {
-                        $notFound[] = $parsedRequests[$lu]['username'];
-                    }
-                    unset($needsCheck[$lu]);
-                }
-            }
-
-            // 5. ZP Get Cookie
-            if (!empty($needsGet)) { writeAdminLog('GetCookie', 'กำลังสั่ง ZP ดึงคุกกี้ใหม่ ' . count($needsGet) . ' ไอดี'); updateTrace($traceId, 'พบว่าคุกกี้พัง หรือ ไม่พบในระบบ! กำลังไปขอคุกกี้ใหม่ (ใช้เวลา 1-3 นาที)...'); } else { writeAdminLog('Info', 'คุกกี้สมบูรณ์ทั้งหมด ไม่ต้องดึงใหม่'); updateTrace($traceId, 'คุกกี้ทุกบัญชีใช้งานได้! กำลังเตรียมข้อมูลส่งงาน...'); }
-            $getKey = DB::getSetting('zp_getcookie_key', '');
-            if (!empty($needsGet)) {
-                if (empty($getKey)) {
-                    foreach ($needsGet as $lu => $p) {
-                        $notFound[] = $parsedRequests[$lu]['username'];
-                    }
-                    $needsGet = [];
-                } else {
-                    require_once __DIR__ . '/zp_helpers.php';
-                    $newCookies = zp_get_cookies($getKey, $needsGet, $traceId);
-                if (!empty($newCookies)) { updateTrace($traceId, '✅ ขอคุกกี้ใหม่สำเร็จ! กำลังเตรียมส่งงาน...'); writeAdminLog('Database', 'อัพเดทฐานข้อมูล: บันทึกคุกกี้ใหม่พร้อมประทับเวลา updated_at จำนวน ' . count($newCookies) . ' ไอดี'); } else { updateTrace($traceId, '❌ ขอคุกกี้ใหม่ล้มเหลว (เครดิต ZP หมด หรือติดปัญหา)...'); }
-                    $failedGets = [];
-                    foreach ($needsGet as $lu => $p) {
-                        if (isset($newCookies[$lu])) {
-                            DB::upsertAccount(
-                                $parsedRequests[$lu]['username'],
-                                $newCookies[$lu]['cookie'],
-                                $newCookies[$lu]['password'],
-                                '',
-                                'external'
-                            );
-                            $accountMap[$lu] = [
-                                'username' => $parsedRequests[$lu]['username'],
-                                'password' => $newCookies[$lu]['password'],
-                                'cookie' => $newCookies[$lu]['cookie']
-                            ];
-                        } else {
-                            $notFound[] = $parsedRequests[$lu]['username'];
-                            $failedGets[] = $parsedRequests[$lu]['username'];
-                            unset($accountMap[$lu]);
-                        }
-                    }
-                    if (!empty($failedGets)) { writeAdminLog('Error', 'ดึงคุกกี้ใหม่ล้มเหลว: ' . implode(', ', $failedGets)); jsonResponse(['success' => false, 'error' => 'ดึงคุกกี้ใหม่ล้มเหลวที่บัญชี: ' . implode(', ', $failedGets) . ' (รหัสผ่านอาจผิด หรือระบบ Roblox มีปัญหา)'], 400); }
-                }
-            }
-
-            // 6. Build lines for job submission
+            // 6. Build lines for job submission// 6. Build lines for job submission
             $lines = [];
             foreach ($parsedRequests as $lu => $req) {
                 if (!in_array($req['username'], $notFound) && isset($accountMap[$lu]) && !empty($accountMap[$lu]['cookie'])) {

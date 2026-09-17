@@ -737,8 +737,11 @@ document.getElementById('btnCustRefresh')?.addEventListener('click', () => {
 function switchServiceTab(tab) {
   document.getElementById('paneCaptcha').classList.toggle('active', tab === 'captcha');
   document.getElementById('paneFace').classList.toggle('active', tab === 'face');
+  if (document.getElementById('paneTools')) document.getElementById('paneTools').classList.toggle('active', tab === 'tools');
+  
   document.getElementById('tabBtnCaptcha').classList.toggle('active', tab === 'captcha');
   document.getElementById('tabBtnFace').classList.toggle('active', tab === 'face');
+  if (document.getElementById('tabBtnTools')) document.getElementById('tabBtnTools').classList.toggle('active', tab === 'tools');
 }
 
 // ============================================================
@@ -1312,3 +1315,92 @@ function updateFaceStatusUI(job) {
 // INIT — check member session on page load
 // ============================================================
 checkMemberSession();
+
+// ==========================================
+// COOKIE TOOLS
+// ==========================================
+
+async function toolCheckCookies() {
+    const inputStr = document.getElementById('toolCheckInput').value.trim();
+    const logEl = document.getElementById('toolCheckLog');
+    const btn = document.getElementById('btnToolCheck');
+
+    if (!inputStr) {
+        alert('กรุณากรอก Username อย่างน้อย 1 บัญชี');
+        return;
+    }
+
+    logEl.style.display = 'block';
+    logEl.textContent = 'กำลังตรวจสอบสถานะคุกกี้...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api.php?action=tool_check_cookies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ usernames: inputStr })
+        });
+        const data = await res.json();
+        
+        btn.disabled = false;
+
+        if (res.ok && data.success) {
+            let msg = `✅ ใช้งานได้: ${data.alive.length} บัญชี\n`;
+            if (data.alive.length > 0) msg += `   [ ${data.alive.join(', ')} ]\n`;
+            
+            msg += `❌ คุกกี้ตาย: ${data.dead.length} บัญชี\n`;
+            if (data.dead.length > 0) msg += `   [ ${data.dead.join(', ')} ]\n`;
+            
+            msg += `⚠️ ไม่พบในระบบ: ${data.not_found.length} บัญชี\n`;
+            if (data.not_found.length > 0) msg += `   [ ${data.not_found.join(', ')} ]`;
+            
+            logEl.textContent = msg;
+        } else {
+            logEl.textContent = `❌ เกิดข้อผิดพลาด: ${data.error || 'ไม่สามารถทำรายการได้'}`;
+        }
+    } catch (err) {
+        btn.disabled = false;
+        logEl.textContent = '❌ ขัดข้อง: การเชื่อมต่อมีปัญหา';
+    }
+}
+
+async function toolGetCookies() {
+    const inputStr = document.getElementById('toolGetInput').value.trim();
+    const logEl = document.getElementById('toolGetLog');
+    const btn = document.getElementById('btnToolGet');
+
+    if (!inputStr) {
+        alert('กรุณากรอกข้อมูล Username:Password');
+        return;
+    }
+
+    logEl.style.display = 'block';
+    logEl.textContent = 'กำลังส่งคำสั่งไปดึงคุกกี้ใหม่ (ใช้เวลา 1-3 นาที กรุณารอ)...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api.php?action=tool_get_cookies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ accounts: inputStr })
+        });
+        const data = await res.json();
+        
+        btn.disabled = false;
+
+        if (res.ok && data.success) {
+            let msg = `✅ ดึงสำเร็จและบันทึกแล้ว: ${data.success_accounts.length} บัญชี\n`;
+            if (data.success_accounts.length > 0) msg += `   [ ${data.success_accounts.join(', ')} ]\n`;
+            
+            msg += `❌ ดึงล้มเหลว: ${data.failed_accounts.length} บัญชี\n`;
+            if (data.failed_accounts.length > 0) msg += `   [ ${data.failed_accounts.join(', ')} ]`;
+            
+            logEl.textContent = msg;
+        } else {
+            logEl.textContent = `❌ เกิดข้อผิดพลาด: ${data.error || 'ไม่สามารถทำรายการได้'}`;
+        }
+    } catch (err) {
+        btn.disabled = false;
+        logEl.textContent = '❌ ขัดข้อง: การเชื่อมต่อขาดหาย หรือรอนานเกินไป (อาจสำเร็จในเบื้องหลัง)';
+    }
+}
