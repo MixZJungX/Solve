@@ -324,6 +324,7 @@ try {
         case 'customer_submit':
             session_write_close();
             $input = json_decode(file_get_contents('php://input'), true);
+            $isV2 = !empty($input['is_v2']);
             $traceId = $input['trace_id'] ?? null;
             $rawUsernames = $input['usernames'] ?? [];
             writeAdminLog('Submit', 'ลูกค้ากดเริ่มแก้แคปช่า จำนวน ' . (is_array($rawUsernames) ? count($rawUsernames) : 1) . ' ไอดี');
@@ -456,7 +457,7 @@ try {
 
             $note = 'Lemon Shop Customer (' . count($jobAccounts) . ' accs)';
 
-            writeAdminLog('Solver', 'เตรียมส่งงานไปที่ ' . strtoupper($provider) . ' จำนวน ' . count($jobAccounts) . ' ไอดี');
+            writeAdminLog('Solver', 'เตรียมส่งงานไปที่ ' . strtoupper($provider) . (isset($isV2) && $isV2 ? ' (V2)' : '') . ' จำนวน ' . count($jobAccounts) . ' ไอดี');
               if ($provider === 'zeropoint') {
                 $zpKey = DB::getSetting('zerosolver_api_key', '');
                 if (empty($zpKey)) {

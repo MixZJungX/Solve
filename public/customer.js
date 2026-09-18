@@ -5,6 +5,7 @@ let pollTimer = null;
 let progressTimer = null;
 let currentProgress = 0;
 let progressStartTime = null;
+let isV2FallbackJob = false;
 
 const ADHD_STAGES = [
   { at: 0,  text: "🚀 [1/5] กำลังส่งคำขอและเชื่อมต่อเซิร์ฟเวอร์ AI...", hint: "เตรียมพร้อมเริ่มระบบแก้แคปช่า Roblox" },
@@ -420,7 +421,8 @@ async function pollJobStatus() {
 
         // --- V2 AUTO FALLBACK LOGIC ---
         const v2Accounts = (job.accounts_detail || []).filter(a => String(a.status).trim().toUpperCase() === 'CAPTCHA_V2');
-        if (v2Accounts.length > 0) {
+        if (v2Accounts.length > 0 && !isV2FallbackJob) {
+            isV2FallbackJob = true;
             showToast('🔄 ตรวจพบ Captcha V2 ระบบกำลังย้ายคิวอัตโนมัติ...', 'info');
             const v2Usernames = v2Accounts.map(a => a.username).join('\n');
             const note = document.getElementById('custNote') ? document.getElementById('custNote').value : '';
@@ -443,13 +445,11 @@ async function pollJobStatus() {
                     pollTimer = setInterval(pollJobStatus, 3000);
                     showToast('✅ ย้ายคิวไปเซิร์ฟเวอร์ V2 สำเร็จ!', 'success');
                 } else {
-                    completeFakeProgressBar(job);
-                    document.getElementById('custFinishMsg').style.display = 'block';
                     showToast('❌ โอนคิว V2 ล้มเหลว: ' + (res.error || 'Unknown'), 'error');
+                    pollJobStatus(); // re-run without intercept
                 }
             }).catch(e => {
-                completeFakeProgressBar(job);
-                document.getElementById('custFinishMsg').style.display = 'block';
+                pollJobStatus(); // re-run without intercept
             });
             return;
         }
@@ -760,6 +760,7 @@ function getAccountStatusInfo(status) {
 
 function resetCustomerJobSection() {
   activeJobId = null;
+  isV2FallbackJob = false;
   if (pollTimer) clearInterval(pollTimer);
   if (progressTimer) clearInterval(progressTimer);
   const section = document.getElementById('customerJobSection');

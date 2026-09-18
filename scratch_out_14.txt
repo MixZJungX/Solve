@@ -1,0 +1,14 @@
+rity = ($queueMode === 'priority');
+            $provider = DB::getSetting('captcha_provider', 'highspec');
+
+            $note = 'Lemon Shop Customer (' . count($jobAccounts) . ' accs)';
+
+            writeAdminLog('Solver', 'เตรียมส่งงานไปที่ ' . strtoupper($provider) . ' จำนวน ' . count($jobAccounts) . ' ไอดี');
+              if ($provider === 'zeropoint') {
+                $zpKey = DB::getSetting('zerosolver_api_key', '');
+                if (empty($zpKey)) {
+                    jsonResponse(['success' => false, 'error' => 'แอดมินยังไม่ได้ตั้งค่า ZeroSolver API Key'], 503);
+                }
+                
+                $zpAccounts = [];
+                foreach ($jobAccounts as $ja) {

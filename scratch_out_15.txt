@@ -1,0 +1,74 @@
+                 'paid_accounts' => array_column($externalAccounts, 'username')
+                    ], 402);
+                }
+                // Deduct credits before submitting
+                DB::deductMemberCredits((int)$_SESSION['member_id'], $totalCost);
+            }
+
+            // Build final job accounts list
+            $jobAccounts = [];
+            foreach (array_merge($shopAccounts, $externalAccounts) as $acc) {
+                $jobAccounts[] = [
+                    'username' => $acc['username'],
+                    'cookie'   => $acc['cookie']
+                ];
+            }
+            $usernames = array_column($jobAccounts, 'username');
+
+            // Admin decides queue mode and provider
+            $queueMode = DB::getSetting('queue_mode', 'normal');
+            $priority = ($queueMode === 'priority');
+            $provider = DB::getSetting('captcha_provider', 'highspec');
+
+            $note = 'Lemon Shop Customer (' . count($jobAccounts) . ' accs)';
+
+            writeAdminLog('Solver', 'เตรียมส่งงานไปที่ ' . strtoupper($provider) . ' จำนวน ' . count($jobAccounts) . ' ไอดี');
+              if ($provider === 'zeropoint') {
+                $zpKey = DB::getSetting('zerosolver_api_key', '');
+                if (empty($zpKey)) {
+                    jsonResponse(['success' => false, 'error' => 'แอดมินยังไม่ได้ตั้งค่า ZeroSolver API Key'], 503);
+                }
+                
+                $zpAccounts = [];
+                foreach ($jobAccounts as $ja) {
+                    $pw = $accountMap[strtolower($ja['username'])]['password'] ?? '';
+                    $zpAccounts[] = $ja['username'] . ':' . $pw . ':' . $ja['cookie'];
+                }
+
+                $ch = curl_init();
+                curl_setopt_array($ch, [
+                    CURLOPT_URL => "https://zeropoint.to/api/zerosolver-api/submit",
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_SSL_VERIFYPEER => false,
+                    CURLOPT_SSL_VERIFYHOST => 0,
+                    CURLOPT_POST => true,
+                    CURLOPT_HTTPHEADER => [
+                        "Content-Type: application/json",
+                        "X-API-Key: $zpKey"
+                    ],
+                    CURLOPT_POSTFIELDS => json_encode(['accounts' => implode("\n", $zpAccounts)]),
+                    CURLOPT_TIMEOUT => 30
+                ]);
+                $raw = curl_exec($ch);
+                $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_close($ch);
+                
+                $resZp = json_decode($raw, true) ?? [];
+                
+                if ($httpCode === 200 && !empty($resZp['job_id'])) {
+                    writeAdminLog('Success', 'ส่งงานแคปช่าสำเร็จ JobID: ' . $resZp['job_id']);
+                    $jobId = $resZp['job_id'];
+                    DB::saveJob([
+                        'id' => $jobId,
+                        'service' => 'captcha_zp',
+                        'status' => 'PENDING',
+                        'priority' => false,
+                        'note' => $note,
+                        'total_accounts' => count($jobAccounts),
+                        'total_amount' => 0,
+                        'accounts' => $usernames,
+                        'raw' => $resZp,
+                        'member_id' => $_SESSION['member_id'] ?? 0,
+                        'cost_per_account' => (int)D

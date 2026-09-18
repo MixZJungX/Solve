@@ -1,0 +1,39 @@
+                   jsonResponse(['success' => false, 'error' => $resZp['error'] ?? 'เกิดข้อผิดพลาดในการเชื่อมต่อ ZeroPoint'], $httpCode ?: 500);
+                }
+            } else {
+                // HIGHSPEC LOGIC
+                $payload = [
+                    'note' => $note,
+                    'accounts' => $jobAccounts
+                ];
+
+                $endpoint = $isV2 ? "/external/job/captcha-v2/submit?service=directapi" : "/external/job/captcha/submit?service=directapi";
+                if ($priority) {
+                    $endpoint .= '&priority=true';
+                }
+
+                $res = callHighspec($endpoint, 'POST', $payload);
+
+                if ($res['status'] === 201) {
+                    $jobData = $res['data']['data'] ?? [];
+                    $jobId = $jobData['id'] ?? '';
+                    writeAdminLog('Success', 'ส่งงานแคปช่าสำเร็จ JobID: ' . $jobId);
+                    writeAdminLog('Success', 'ส่งงานแคปช่าสำเร็จ JobID: ' . $jobId);
+
+                    DB::saveJob([
+                        'id' => $jobId,
+                        'service' => 'captcha',
+                        'status' => $jobData['status'] ?? 'PENDING',
+                        'priority' => $priority,
+                        'note' => $note,
+                        'total_accounts' => count($jobAccounts),
+                        'total_amount' => $jobData['total_amount'] ?? 0,
+                        'accounts' => $usernames,
+                        'raw' => $res['data']
+                    ]);
+
+                    foreach ($usernames as $u) {
+                        DB::updateAccountUsage($u, $jobId, 'PENDING');
+                    }
+
+                    jsonRespo
