@@ -438,8 +438,9 @@ async function pollJobStatus() {
                     is_v2: true
                 })
             }).then(r => r.json()).then(res => {
-                if (res.success && res.job_id) {
-                    activeJobId = res.job_id;
+                const newJobId = res.job_id || (res.data && res.data.job_id);
+                if (res.success && newJobId) {
+                    activeJobId = newJobId;
                     document.getElementById('custFinishMsg').style.display = 'none';
                     startFakeProgressBar();
                     pollTimer = setInterval(pollJobStatus, 3000);

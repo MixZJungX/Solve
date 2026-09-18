@@ -1,0 +1,36 @@
+case 'customer_submit':
+            session_write_close();
+            $input = json_decode(file_get_contents('php://input'), true);
+            $isV2 = !empty($input['is_v2']);
+            $traceId = $input['trace_id'] ?? null;
+            $rawUsernames = $input['usernames'] ?? [];
+            writeAdminLog('Submit', 'ลูกค้ากดเริ่มแก้แคปช่า จำนวน ' . (is_array($rawUsernames) ? count($rawUsernames) : 1) . ' ไอดี');
+
+            if (is_string($rawUsernames)) {
+                $rawUsernames = preg_split("/[
+
+,]+/", $rawUsernames);
+            }
+
+            $parsedRequests = [];
+            $usernamesToQuery = [];
+            foreach ($rawUsernames as $line) {
+                if (strpos($line, ':') !== false) {
+                    list($u, $p) = explode(':', $line, 2);
+                    $u = trim($u); $p = trim($p);
+                } else {
+                    $u = trim($line); $p = null;
+                }
+                if ($u === '') continue;
+                $parsedRequests[strtolower($u)] = ['username' => $u, 'password' => $p];
+                $usernamesToQuery[] = strtolower($u);
+            }
+            $usernamesToQuery = array_values(array_unique($usernamesToQuery));
+
+            if (empty($usernamesToQuery)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละคร (Username) อย่างน้อย 1 บัญชี'], 400);
+            }
+
+            updateTrace($traceId, 'กำลังตรวจสอบคุกกี้ที่บันทึกไว้ในระบบ...');
+            // Check shop API key
+           
