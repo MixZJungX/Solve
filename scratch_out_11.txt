@@ -1,0 +1,32 @@
+div style="display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin-bottom:10px;color:#f87171;">
+              <span style="font-size:24px;line-height:1;">❌</span>
+              <span>การแก้แคปช่าไม่สำเร็จ (ไม่สามารถเข้าเล่นเกมได้)</span>
+            </div>
+            
+            <div style="font-size:13px;color:#fca5a5;line-height:1.6;margin-bottom:14px;text-align:left;">
+              ระบบไม่สามารถดำเนินการแก้แคปช่าได้ เนื่องจากตรวจพบข้อผิดพลาดที่ตัวบัญชี Roblox ของท่าน
+            </div>
+
+            <div style="margin-bottom:12px;">
+              <div style="font-size:11px;font-weight:700;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;letter-spacing:0.5px;text-align:left;">
+                📋 สาเหตุและวิธีแก้ไขของแต่ละไอดี:
+              </div>
+              ${failedItemsHtml}
+            </div>
+
+
+
+            <button class="btn btn-secondary btn-sm" onclick="resetCustomerJobSection()" style="font-size:13px;cursor:pointer;padding:10px 20px;font-weight:600;">
+              🔄 ตรวจสอบไอดีอื่น / ลองใหม่อีกครั้ง
+            </button>
+          `;
+          showToast('แก้แคปช่าไม่สำเร็จ กรุณาดูสาเหตุและคำแนะนำด้านล่าง', 'error');
+        } else if (isAllSkipped) {
+          finishEl.style.background = 'rgba(20, 184, 166, 0.12)';
+          finishEl.style.borderColor = 'rgba(45, 212, 191, 0.45)';
+          finishEl.style.color = '#2dd4bf';
+          finishEl.innerHTML = `
+            <div style="display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;margin-bottom:8px;color:#2dd4bf;">
+              <span style="font-size:22px;">✨</span>
+              <span>บัญชีนี้ไม่มีแคปช่าติดค้าง หรือผ่านการแก้ไขแล้ว!</span>
+            </div
