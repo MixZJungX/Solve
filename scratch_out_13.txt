@@ -1,0 +1,57 @@
+ie'])) {
+                    $invalidAccounts[] = $u;
+                }
+            }
+            if (!empty($invalidAccounts)) {
+                jsonResponse(['success' => false, 'error' => 'บัญชีเหล่านี้ไม่มีคุกกี้ในระบบ หรือยังไม่ได้ถูกเพิ่ม: ' . implode(', ', $invalidAccounts)], 400);
+            }
+            
+            // Re-build $usernames for the next section which expects original case usernames
+            $usernames = [];
+            foreach ($parsedRequests as $req) {
+                $usernames[] = $req['username'];
+            }
+            
+            // Classify: shop accounts (free) vs external accounts (paid)
+            $shopAccounts     = [];
+            $externalAccounts = [];
+            $notInDb          = [];
+
+            foreach ($usernames as $u) {
+                $lower = strtolower($u);
+                if (isset($accountMap[$lower])) {
+                    $acc = $accountMap[$lower];
+                    if (($acc['account_type'] ?? 'shop') === 'shop') {
+                        $shopAccounts[] = $acc;
+                    } else {
+                        $externalAccounts[] = $acc;
+                    }
+                } else {
+                    $notInDb[] = $u;
+                }
+            }
+
+            // Accounts not in DB cannot be submitted
+            if (!empty($notInDb)) {
+                jsonResponse([
+                    'success' => false,
+                    'error' => 'ไม่พบบัญชีต่อไปนี้ในระบบของร้านค้า: ' . implode(', ', $notInDb) . ' (กรุณาแจ้งแอดมินเพื่อเพิ่มบัญชีก่อนครับ)',
+                    'missing_usernames' => $notInDb
+                ], 404);
+            }
+
+            // If there are external (paid) accounts, require member login + sufficient credits
+            if (!empty($externalAccounts)) {
+                if (empty($_SESSION['member_id'])) {
+                    jsonResponse([
+                        'success' => false,
+                        'requires_login' => true,
+                        'error' => 'บัญชีบางรายการเป็นประเภทชำระเงิน กรุณาเข้าสู่ระบบสมาชิกก่อน',
+                        'paid_accounts' => array_column($externalAccounts, 'username')
+                    ], 401);
+                }
+                $member = DB::getMemberById((int)$_SESSION['member_id']);
+                if (!$member || $member['status'] !== 'approved') {
+                    jsonResponse(['success' => false, 'requires_login' => true, 'error' => 'บัญชีสมาชิกยังไม่ได้รับการอนุมัติ'], 403);
+                }
+          

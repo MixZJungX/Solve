@@ -1,0 +1,57 @@
+case 'customer_submit':
+            session_write_close();
+            $input = json_decode(file_get_contents('php://input'), true);
+            $traceId = $input['trace_id'] ?? null;
+            $rawUsernames = $input['usernames'] ?? [];
+            writeAdminLog('Submit', 'ลูกค้ากดเริ่มแก้แคปช่า จำนวน ' . (is_array($rawUsernames) ? count($rawUsernames) : 1) . ' ไอดี');
+
+            if (is_string($rawUsernames)) {
+                $rawUsernames = preg_split("/[
+
+,]+/", $rawUsernames);
+            }
+
+            $parsedRequests = [];
+            $usernamesToQuery = [];
+            foreach ($rawUsernames as $line) {
+                if (strpos($line, ':') !== false) {
+                    list($u, $p) = explode(':', $line, 2);
+                    $u = trim($u); $p = trim($p);
+                } else {
+                    $u = trim($line); $p = null;
+                }
+                if ($u === '') continue;
+                $parsedRequests[strtolower($u)] = ['username' => $u, 'password' => $p];
+                $usernamesToQuery[] = strtolower($u);
+            }
+            $usernamesToQuery = array_values(array_unique($usernamesToQuery));
+
+            if (empty($usernamesToQuery)) {
+                jsonResponse(['success' => false, 'error' => 'กรุณาระบุชื่อตัวละคร (Username) อย่างน้อย 1 บัญชี'], 400);
+            }
+
+            updateTrace($traceId, 'กำลังตรวจสอบคุกกี้ที่บันทึกไว้ในระบบ...');
+            // Check shop API key
+            $apiKey = getApiKey();
+            if (empty($apiKey)) {
+                jsonResponse(['success' => false, 'error' => 'ระบบหลังบ้านไม่ได้ตั้งค่า API กรุณาติดต่อแอดมิน'], 503);
+            }
+
+            // Fetch accounts from local DB
+            $accountMap = DB::getAccountsByUsernames($usernamesToQuery);
+            
+            // Check if all requested accounts have a cookie in DB
+            $invalidAccounts = [];
+            foreach ($usernamesToQuery as $u) {
+                if (empty($accountMap[$u]) || empty($accountMap[$u]['cookie'])) {
+                    $invalidAccounts[] = $u;
+                }
+            }
+            if (!empty($invalidAccounts)) {
+                jsonResponse(['success' => false, 'error' => 'บัญชีเหล่านี้ไม่มีคุกกี้ในระบบ หรือยังไม่ได้ถูกเพิ่ม: ' . implode(', ', $invalidAccounts)], 400);
+            }
+            
+            // Re-build $usernames for the next section which expects original case usernames
+            $usernames = [];
+            foreach ($parsedRequests as $req) {
+            

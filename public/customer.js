@@ -417,6 +417,44 @@ async function pollJobStatus() {
       if (job.status === 'COMPLETED' || job.status === 'FAILED') {
         clearInterval(pollTimer);
         pollTimer = null;
+
+        // --- V2 AUTO FALLBACK LOGIC ---
+        const v2Accounts = (job.accounts_detail || []).filter(a => String(a.status).trim().toUpperCase() === 'CAPTCHA_V2');
+        if (v2Accounts.length > 0) {
+            showToast('🔄 ตรวจพบ Captcha V2 ระบบกำลังย้ายคิวอัตโนมัติ...', 'info');
+            const v2Usernames = v2Accounts.map(a => a.username).join('\n');
+            const note = document.getElementById('custNote') ? document.getElementById('custNote').value : '';
+            const priority = document.getElementById('custPriority') ? document.getElementById('custPriority').checked : false;
+            
+            fetch('/api.php?action=customer_submit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    usernames: v2Usernames,
+                    note: note,
+                    priority: priority,
+                    is_v2: true
+                })
+            }).then(r => r.json()).then(res => {
+                if (res.success && res.job_id) {
+                    activeJobId = res.job_id;
+                    document.getElementById('custFinishMsg').style.display = 'none';
+                    startFakeProgressBar();
+                    pollTimer = setInterval(pollJobStatus, 3000);
+                    showToast('✅ ย้ายคิวไปเซิร์ฟเวอร์ V2 สำเร็จ!', 'success');
+                } else {
+                    completeFakeProgressBar(job);
+                    document.getElementById('custFinishMsg').style.display = 'block';
+                    showToast('❌ โอนคิว V2 ล้มเหลว: ' + (res.error || 'Unknown'), 'error');
+                }
+            }).catch(e => {
+                completeFakeProgressBar(job);
+                document.getElementById('custFinishMsg').style.display = 'block';
+            });
+            return;
+        }
+        // ------------------------------
+
         completeFakeProgressBar(job);
         const finishEl = document.getElementById('custFinishMsg');
         finishEl.style.display = 'block';

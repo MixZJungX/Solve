@@ -535,7 +535,7 @@ try {
                     'accounts' => $jobAccounts
                 ];
 
-                $endpoint = "/external/job/captcha/submit?service=directapi";
+                $endpoint = $isV2 ? "/external/job/captcha-v2/submit?service=directapi" : "/external/job/captcha/submit?service=directapi";
                 if ($priority) {
                     $endpoint .= '&priority=true';
                 }
